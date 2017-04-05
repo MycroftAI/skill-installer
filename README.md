@@ -1,1 +1,4 @@
-# skill-installer
+# Installer Skill
+
+## Usage:
+* `install daily meditation`
