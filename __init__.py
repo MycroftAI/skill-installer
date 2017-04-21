@@ -14,13 +14,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Mycroft Core.  If not, see <http://www.gnu.org/licenses/>.
-import subprocess
-
-from adapt.intent import IntentBuilder
+import os
 from os.path import join
 
+from adapt.intent import IntentBuilder
 from mycroft import MYCROFT_ROOT_PATH
-from mycroft.configuration import ConfigurationManager
 from mycroft.skills.core import MycroftSkill
 from mycroft.util.log import getLogger
 
@@ -28,9 +26,7 @@ __author__ = 'augustnmonteiro2'
 
 logger = getLogger(__name__)
 
-config = ConfigurationManager.get().get("SkillInstallerSkill")
-
-BIN = config.get("path", join(MYCROFT_ROOT_PATH, 'msm', 'msm'))
+BIN = join(MYCROFT_ROOT_PATH, 'msm', 'msm')
 
 
 class SkillInstallerSkill(MycroftSkill):
@@ -45,11 +41,9 @@ class SkillInstallerSkill(MycroftSkill):
     def install(self, message):
         utterance = message.data.get('utterance').lower()
         skill = utterance.replace(message.data.get('InstallKeyword'), '')
-        p = subprocess.Popen(
-            [BIN, "install", skill.strip().replace(" ", "-")],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-        text, err = p.communicate()
+        self.speak_dialog("installing")
+        text = os.popen(
+            BIN + " install " + skill.strip().replace(" ", "-")).read()
         if text.splitlines()[1] == "Your search has multiple choices":
             stdout = text.splitlines()
             del stdout[0:3]
