@@ -19,6 +19,7 @@ from os.path import join
 
 from adapt.intent import IntentBuilder
 from mycroft import MYCROFT_ROOT_PATH
+from mycroft.configuration import ConfigurationManager
 from mycroft.skills.core import MycroftSkill
 from mycroft.util.log import getLogger
 
@@ -26,7 +27,8 @@ __author__ = 'augustnmonteiro2'
 
 logger = getLogger(__name__)
 
-BIN = join(MYCROFT_ROOT_PATH, 'msm', 'msm')
+installer_config = ConfigurationManager.instance().get("SkillInstallerSkill")
+BIN = installer_config.get("path", join(MYCROFT_ROOT_PATH, 'msm', 'msm'))
 
 
 class SkillInstallerSkill(MycroftSkill):
