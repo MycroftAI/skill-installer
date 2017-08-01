@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Mycroft Core.  If not, see <http://www.gnu.org/licenses/>.
-import os
+import subprocess
 from os.path import join
 
 from adapt.intent import IntentBuilder
@@ -44,16 +44,30 @@ class SkillInstallerSkill(MycroftSkill):
         utterance = message.data.get('utterance').lower()
         skill = utterance.replace(message.data.get('InstallKeyword'), '')
         self.speak_dialog("installing")
-        text = os.popen(
-            BIN + " install " + skill.strip().replace(" ", "-")).read()
-        if text.splitlines()[1] == "Your search has multiple choices":
-            stdout = text.splitlines()
-            del stdout[0:3]
-            self.speak_dialog("choose", data={'skills': ", ".join(stdout)})
-        elif text.splitlines()[1] == "Skill not found" or skill == "":
-            self.speak_dialog("not.found", data={'skill': skill})
-        elif text.splitlines()[2] == "Skill installed!":
+
+        cmd = BIN + " install " + skill.strip().replace(" ", "-")
+        installer = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+        text = installer.stdout.read().splitlines()
+        installer.communicate()
+
+        # Check return code or error code reported in text
+        if installer.returncode != 0 or len(text[-1].split('Err')) == 2:
+            err = installer.returncode or text[-1].split('Err')[1]
+            self.report_error(skill, text, int(err))
+        elif 'has been installed' in text[-1]:
             self.speak_dialog("installed", data={'skill': skill})
+
+    def report_error(self, skill, text, err):
+        """ parse error text and report error to user """
+
+        if text[2] == 'Your search has multiple choices':
+            self.speak_dialog("choose",
+                              data={'skills': ", ".join(stdout[5:-1])})
+        elif "skill was not found" in text[2] or skill == "":
+            self.speak_dialog("not.found", data={'skill': skill})
+        else:
+            self.speak_dialog("other.error",
+                    data={'error': err, 'skill': skill})
 
     def stop(self):
         pass
