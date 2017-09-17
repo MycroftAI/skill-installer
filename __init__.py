@@ -15,17 +15,16 @@
 # You should have received a copy of the GNU General Public License
 # along with Mycroft Core.  If not, see <http://www.gnu.org/licenses/>.
 import subprocess
+import re
 from os.path import join
 
 from adapt.intent import IntentBuilder
 from mycroft import MYCROFT_ROOT_PATH
 from mycroft.configuration import ConfigurationManager
-from mycroft.skills.core import MycroftSkill
-from mycroft.util.log import getLogger
+from mycroft.skills.core import MycroftSkill, intent_handler
 
 __author__ = 'augustnmonteiro2'
 
-logger = getLogger(__name__)
 
 installer_config = ConfigurationManager.instance().get("SkillInstallerSkill")
 BIN = installer_config.get("path", join(MYCROFT_ROOT_PATH, 'msm', 'msm'))
@@ -35,42 +34,94 @@ class SkillInstallerSkill(MycroftSkill):
     def __init__(self):
         super(SkillInstallerSkill, self).__init__(name="SkillInstallerSkill")
 
-    def initialize(self):
-        install = IntentBuilder("InstallIntent"). \
-            require("InstallKeyword").build()
-        self.register_intent(install, self.install)
-
+    @intent_handler(IntentBuilder("InstallIntent").require("Install"))
     def install(self, message):
         utterance = message.data.get('utterance').lower()
-        skill = utterance.replace(message.data.get('InstallKeyword'), '')
+        name = utterance.replace(message.data.get('InstallKeyword'), '')
         self.speak_dialog("installing")
 
-        cmd = BIN + " install " + skill.strip().replace(" ", "-")
-        installer = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
-        text = installer.stdout.read().splitlines()
-        installer.communicate()
+        # Invoke MSM to perform installation
+        try:
+            output = subprocess.check_output(
+                [BIN, 'install', '"' + skill.strip() + '"'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                shell=True)
+            rc = 0
+        except subprocess.CalledProcessError, e:
+            output = e.output
+            rc = e.returncode
 
-        # Check return code or error code reported in text
-        if installer.returncode != 0 or len(text[-1].split('Err')) == 2:
-            err = installer.returncode or text[-1].split('Err')[1]
-            self.report_error(skill, text, int(err))
-        elif 'has been installed' in text[-1]:
-            self.speak_dialog("installed", data={'skill': skill})
+        if rc == 0:
+            # Success!
+            # TODO: Speak the skill name?  Parse for "Installed: (.*)"
+            self.speak_dialog("installed", data={'skill': name})
+        elif rc == 20:
+            # Already installed
+            self.speak_dialog("already.installed", data={'skill': name})
+        elif rc == 201:
+            # Multiple matches found
 
-    def report_error(self, skill, text, err):
-        """ parse error text and report error to user """
+            # A line of dashes starts and ends the list of skills in output
+            pat = re.compile("----------$(.*)^----------",
+                             re.DOTALL | re.MULTILINE)
+            match = pat.search(output)
+            if match:
+                skills = match.group(1)
+            else:
+                skills = ""
 
-        if text[2] == 'Your search has multiple choices':
-            self.speak_dialog("choose",
-                              data={'skills': ", ".join(stdout[5:-1])})
-        elif "skill was not found" in text[2] or skill == "":
-            self.speak_dialog("not.found", data={'skill': skill})
+            # read the list for followup
+            self.speak_dialog("choose", data={'skills': ", ".join(skills)})
+        elif rc == 202:
+            # Not found
+            self.speak_dialog("not.found", data={'skill': name})
         else:
-            self.speak_dialog("other.error",
-                    data={'error': err, 'skill': skill})
+            # Other installation error, just read code
+            self.speak_dialog("installation.error", data={'skill': name,
+                                                          'error': rc})
 
-    def stop(self):
-        pass
+    @intent_handler(IntentBuilder("UninstallIntent").require("Uninstall"))
+    def uninstall(self, message):
+        utterance = message.data.get('utterance').lower()
+        name = utterance.replace(message.data.get('UninstallKeyword'), '')
+        self.speak_dialog("removing")
+
+        # Invoke MSM to perform installation
+        try:
+            output = subprocess.check_output(
+                [BIN, 'remove', '"' + skill.strip() + '"'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                shell=True)
+            rc = 0
+        except subprocess.CalledProcessError, e:
+            output = e.output
+            rc = e.returncode
+
+        if rc == 0:
+            # Success, removed!
+            # TODO: Speak the skill name?  Parse for "Removed: (.*)"
+            self.speak_dialog("removed", data={'skill': name})
+        elif rc == 253:
+            # Already installed
+            self.speak_dialog("remove.not.found", data={'skill': name})
+        elif rc == 251:
+            # Multiple matches found
+
+            # A line of dashes starts and ends the list of skills in output
+            pat = re.compile("----------$(.*)^----------",
+                             re.DOTALL | re.MULTILINE)
+            match = pat.search(output)
+            if match:
+                skills = match.group(1)
+            else:
+                skills = ""
+
+            # read the list for followup
+            self.speak_dialog("choose", data={'skills': ", ".join(skills)})
+        else:
+            # Other removal error, just read code
+            self.speak_dialog("removal.error", data={'skill': name,
+                                                     'error': rc})
 
 
 def create_skill():
