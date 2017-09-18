@@ -42,7 +42,9 @@ class SkillInstallerSkill(MycroftSkill):
 
         # Invoke MSM to perform installation
         try:
-            output = subprocess.check_output([BIN, 'install', name.strip()])
+            cmd = ' '.join([BIN, 'install', '"' + name.strip() + '"'])
+            output = subprocess.check_output(cmd, shell=True)
+            self.log.info("MSM output: " + str(output))
             rc = 0
         except subprocess.CalledProcessError, e:
             output = e.output
@@ -85,7 +87,9 @@ class SkillInstallerSkill(MycroftSkill):
 
         # Invoke MSM to perform removal
         try:
-            output = subprocess.check_output([BIN, 'remove', name.strip()])
+            cmd = ' '.join([BIN, 'remove', '"' + name.strip() + '"'])
+            output = subprocess.check_output(cmd, shell=True)
+            self.log.info("MSM output: " + str(output))
             rc = 0
         except subprocess.CalledProcessError, e:
             output = e.output
