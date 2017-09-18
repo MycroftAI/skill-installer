@@ -37,13 +37,13 @@ class SkillInstallerSkill(MycroftSkill):
     @intent_handler(IntentBuilder("InstallIntent").require("Install"))
     def install(self, message):
         utterance = message.data.get('utterance').lower()
-        name = utterance.replace(message.data.get('InstallKeyword'), '')
+        name = utterance.replace(message.data.get('Install'), '')
         self.speak_dialog("installing")
 
         # Invoke MSM to perform installation
         try:
             output = subprocess.check_output(
-                [BIN, 'install', '"' + skill.strip() + '"'],
+                [BIN, 'install', skill.strip()],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 shell=True)
             rc = 0
@@ -83,13 +83,13 @@ class SkillInstallerSkill(MycroftSkill):
     @intent_handler(IntentBuilder("UninstallIntent").require("Uninstall"))
     def uninstall(self, message):
         utterance = message.data.get('utterance').lower()
-        name = utterance.replace(message.data.get('UninstallKeyword'), '')
+        name = utterance.replace(message.data.get('Uninstall'), '')
         self.speak_dialog("removing")
 
-        # Invoke MSM to perform installation
+        # Invoke MSM to perform removal
         try:
             output = subprocess.check_output(
-                [BIN, 'remove', '"' + skill.strip() + '"'],
+                [BIN, 'remove', skill.strip()],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 shell=True)
             rc = 0
