@@ -1,4 +1,11 @@
-# Installer Skill
+## installer skill
+Installs mycroft skills
 
-## Usage:
-* `install daily meditation`
+## Description 
+Installs mycroft skills from the skills repo
+
+## Examples 
+* "install daily meditation"
+
+## Credits 
+Mycroft AI
