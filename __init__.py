@@ -82,7 +82,7 @@ class SkillInstallerSkill(MycroftSkill):
     @intent_handler(IntentBuilder("GithubIntent").require("Github"))
     def install(self, message):
         utterance = message.data.get('utterance').lower()
-        url = message.data["URL"]
+        url = message.data["url"]
         self.speak_dialog("installing")
 
         # Invoke MSM to perform installation

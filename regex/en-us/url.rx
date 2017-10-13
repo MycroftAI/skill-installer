@@ -1,1 +1,1 @@
-install github url (?P<URL>.*)
+install github url (?P<url>.*)
