@@ -80,7 +80,7 @@ class SkillInstallerSkill(MycroftSkill):
                                                           'error': rc})
 
     @intent_handler(IntentBuilder("GithubIntent").require("Github"))
-    def install(self, message):
+    def install_github(self, message):
         utterance = message.data.get('utterance').lower()
         url = message.data["url"]
         self.log.debug("The url is: {}".format(url))
