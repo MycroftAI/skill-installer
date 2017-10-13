@@ -82,13 +82,13 @@ class SkillInstallerSkill(MycroftSkill):
     @intent_handler(IntentBuilder("GithubIntent").require("Github").require("url"))
     def install_github(self, message):
         utterance = message.data.get('utterance').lower()
-        url = message.data["url"]
-        self.log.debug("The url is: {}".format(str(url)))
+        url = utterance.replace(message.data.get('Github'), '')
+        self.log.debug("The url is: {}".format(url))
         self.speak_dialog("installing")
 
         # Invoke MSM to perform installation
         try:
-            cmd = ' '.join([BIN, 'install', + str(url)])
+            cmd = ' '.join([BIN, 'install', + url])
             output = subprocess.check_output(cmd, shell=True)
             self.log.info("MSM output: " + str(output))
             rc = 0
