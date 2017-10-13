@@ -83,6 +83,7 @@ class SkillInstallerSkill(MycroftSkill):
     def install(self, message):
         utterance = message.data.get('utterance').lower()
         url = message.data["url"]
+        self.log.debug("The url is: {}".format(url))
         self.speak_dialog("installing")
 
         # Invoke MSM to perform installation
