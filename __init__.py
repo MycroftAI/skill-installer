@@ -79,7 +79,7 @@ class SkillInstallerSkill(MycroftSkill):
             self.speak_dialog("installation.error", data={'skill': name,
                                                           'error': rc})
 
-    @intent_handler(IntentBuilder("GithubIntent").require("Github"))
+    @intent_handler(IntentBuilder("GithubIntent").require("Github").require("url"))
     def install_github(self, message):
         utterance = message.data.get('utterance').lower()
         url = message.data["url"]
