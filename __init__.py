@@ -85,10 +85,11 @@ class SkillInstallerSkill(MycroftSkill):
         url = utterance.replace(message.data.get('Github'), '')
         self.log.debug("The url is: {}".format(url))
         self.speak_dialog("installing")
+        url = str(url)
 
         # Invoke MSM to perform installation
         try:
-            cmd = ' '.join([BIN, 'install', + url])
+            cmd = ' '.join([BIN, 'install', + '"' + url.strip() + '"'])
             output = subprocess.check_output(cmd, shell=True)
             self.log.info("MSM output: " + str(output))
             rc = 0
