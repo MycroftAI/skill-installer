@@ -87,7 +87,7 @@ class SkillInstallerSkill(MycroftSkill):
 
         # Invoke MSM to perform installation
         try:
-            cmd = ' '.join([BIN, 'install', '"' + url)
+            cmd = ' '.join([BIN, 'install' + url)
             output = subprocess.check_output(cmd, shell=True)
             self.log.info("MSM output: " + str(output))
             rc = 0
