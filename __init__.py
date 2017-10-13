@@ -83,7 +83,7 @@ class SkillInstallerSkill(MycroftSkill):
     def install_github(self, message):
         utterance = message.data.get('utterance').lower()
         url = utterance.replace(message.data.get('Github'), '')
-        self.log.debug("The url is: {}".format(url))
+        self.log.debug("The url is: {}".format(url.strip(" ")))
         self.speak_dialog("installing")
 
         # Invoke MSM to perform installation
