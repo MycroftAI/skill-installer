@@ -1,19 +1,17 @@
-# Copyright 2016 Mycroft AI, Inc.
+# Copyright 2017 Mycroft AI Inc.
 #
-# This file is part of Mycroft Core.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# Mycroft Core is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
-# Mycroft Core is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
-# You should have received a copy of the GNU General Public License
-# along with Mycroft Core.  If not, see <http://www.gnu.org/licenses/>.
 import subprocess
 import re
 from os.path import join
@@ -22,8 +20,6 @@ from adapt.intent import IntentBuilder
 from mycroft import MYCROFT_ROOT_PATH
 from mycroft.configuration import ConfigurationManager
 from mycroft.skills.core import MycroftSkill, intent_handler
-
-__author__ = 'augustnmonteiro2'
 
 
 installer_config = ConfigurationManager.instance().get("SkillInstallerSkill")
@@ -52,7 +48,6 @@ class SkillInstallerSkill(MycroftSkill):
 
         if rc == 0:
             # Success!
-            # TODO: Speak the skill name?  Parse for "Installed: (.*)"
             self.speak_dialog("installed", data={'skill': name})
         elif rc == 20:
             # Already installed
@@ -97,7 +92,6 @@ class SkillInstallerSkill(MycroftSkill):
 
         if rc == 0:
             # Success, removed!
-            # TODO: Speak the skill name?  Parse for "Removed: (.*)"
             self.speak_dialog("removed", data={'skill': name})
         elif rc == 253:
             # Already installed
