@@ -40,11 +40,11 @@ class SkillInstallerSkill(MycroftSkill):
         try:
             cmd = ' '.join([BIN, 'install', '"' + name.strip() + '"'])
             output = subprocess.check_output(cmd, shell=True)
-            self.log.info("MSM output: " + str(output))
             rc = 0
         except subprocess.CalledProcessError, e:
             output = e.output
             rc = e.returncode
+        self.log.info("MSM output: " + str(output))
 
         if rc == 0:
             # Success!
@@ -63,6 +63,11 @@ class SkillInstallerSkill(MycroftSkill):
                 skills = match.group(1)
             else:
                 skills = ""
+
+            # split by lines
+            skills = skills.split("\n")
+            # remove empty lines
+            skills = list(filter(lambda x: len(x) > 0, skills))
 
             # read the list for followup
             self.speak_dialog("choose", data={'skills': ", ".join(skills)})
