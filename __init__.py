@@ -74,6 +74,37 @@ class SkillInstallerSkill(MycroftSkill):
             self.speak_dialog("installation.error", data={'skill': name,
                                                           'error': rc})
 
+    @intent_handler(IntentBuilder("GithubIntent").require("Github").require("url"))
+    def install_github(self, message):
+        utterance = message.data.get('utterance').lower()
+        url = utterance.replace(message.data.get('Github'), '')
+        self.log.debug("The url is: {}".format(url.strip(" ")))
+        self.speak_dialog("installing")
+
+        # Invoke MSM to perform installation
+        try:
+            cmd = ' '.join([BIN, 'install' + url])
+            output = subprocess.check_output(cmd, shell=True)
+            self.log.info("MSM output: " + str(output))
+            rc = 0
+        except subprocess.CalledProcessError, e:
+            output = e.output
+            rc = e.returncode
+        if rc == 0:
+            # Success!
+            # TODO: Speak the skill name?  Parse for "Installed: (.*)"
+            self.speak_dialog("installed", data={'skill': url})
+        elif rc == 20:
+            # Already installed
+            self.speak_dialog("already.installed", data={'skill': url})
+        elif rc == 202:
+            # Not found
+            self.speak_dialog("not.found", data={'skill': url})
+        else:
+            # Other installation error, just read code
+            self.speak_dialog("installation.error", data={'skill': url,
+                                                          'error': rc})
+
     @intent_handler(IntentBuilder("UninstallIntent").require("Uninstall"))
     def uninstall(self, message):
         utterance = message.data.get('utterance').lower()
