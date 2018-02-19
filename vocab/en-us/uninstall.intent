@@ -1,0 +1,2 @@
+uninstall (skill|) {skill}
+remove skill {skill}
