@@ -21,7 +21,10 @@ from os.path import join, isfile
 from adapt.intent import IntentBuilder
 from mycroft import MYCROFT_ROOT_PATH
 from mycroft.configuration import ConfigurationManager
-from mycroft.skills.core import MycroftSkill, intent_handler
+try:  # backwards compatibility
+    from mycroft.skills.core import MycroftSkill, intent_handler
+except ImportError:
+    from mycroft.skills.core import MycroftSkill
 from logging import getLogger
 
 
