@@ -32,6 +32,9 @@ installer_config = ConfigurationManager.instance().get("SkillInstallerSkill")
 BIN = installer_config.get("path", join(MYCROFT_ROOT_PATH, 'msm', 'msm'))
 
 
+# TODO: backwards compatibility tags are there for devices
+# who have not done a platform patch It can be removed once comfortable
+# devices are updated to be 0.9.1+
 class SkillInstallerSkill(MycroftSkill):
     # Words STT incorrectly transcribes "skill" to
     SKILL_WORDS = ['scale', 'steel']
