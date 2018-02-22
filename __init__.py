@@ -24,14 +24,14 @@ from mycroft import MYCROFT_ROOT_PATH
 from mycroft.configuration import ConfigurationManager
 from mycroft.skills.core import MycroftSkill, intent_handler
 
-__author__ = 'augustnmonteiro2'
 
 installer_config = ConfigurationManager.instance().get("SkillInstallerSkill")
 BIN = installer_config.get("path", join(MYCROFT_ROOT_PATH, 'msm', 'msm'))
 
 
 class SkillInstallerSkill(MycroftSkill):
-    SKILL_WORDS = ['scale']  # Words STT incorrectly transcribes "skill" to
+    # Words STT incorrectly transcribes "skill" to
+    SKILL_WORDS = ['scale', 'steel']
     COMMON_TOKENS = ['skill', 'fallback', 'mycroft']
     ERROR_DIALOGS = {
         5: 'system.error',  # missing.virtualenv
@@ -56,7 +56,10 @@ class SkillInstallerSkill(MycroftSkill):
     def initialize(self):
         try:
             self.register_intent_file('uninstall.intent', self.uninstall)
-            self.register_intent_file('list.skills.intent', self.handle_list_skills)
+            self.register_intent_file(
+                'list.skills.intent', self.handle_list_skills)
+            self.register_intent_file(
+                'install.custom.intent', self.install_custom)
         except AttributeError:
             self.log.exception('Running outdated version')
 
@@ -72,7 +75,7 @@ class SkillInstallerSkill(MycroftSkill):
             return ['<invalid>']
 
     def get_skill_list(self):
-        """Finds the names of all installed skills"""
+        """Finds the names of all available"""
         return [
             i.strip() for i in
             self.ansi_escape.sub('', check_output([BIN, 'list'])).split('\n')
@@ -82,6 +85,7 @@ class SkillInstallerSkill(MycroftSkill):
         """Returns list of possible skills"""
 
         def extract_tokens(s, tokens):
+            s = s.lower()
             extracted = []
             for token in tokens:
                 extracted += token * s.count(token)
@@ -114,7 +118,8 @@ class SkillInstallerSkill(MycroftSkill):
             confidences[full_name] = conf
 
         best_skill, best_conf = max(confidences.items(), key=lambda x: x[1])
-        best_skills = [s for s, c in confidences.items() if c > best_conf - 0.1]
+        best_skills = \
+            [s for s, c in confidences.items() if c > best_conf - 0.1]
 
         self.log.info('Highest Confidence Skill: ' + best_skill)
         self.log.info('Highest Confidence: ' + str(best_conf))
@@ -126,10 +131,23 @@ class SkillInstallerSkill(MycroftSkill):
         else:
             return best_skills
 
+    def msm_installer(self, skill, action):
+        self.speak_dialog("installing")
+        try:
+            output = check_output([BIN, 'install', skill])
+        except subprocess.CalledProcessError as e:
+            self.log.error(
+                "MSM returned " + str(e.returncode) + ": " + e.output)
+            dialog = self.ERROR_DIALOGS.get(e.returncode, "installation.error")
+            self.speak_dialog(dialog, dict(skill=skill, action=action,
+                                           error=e.returncode))
+        else:
+            self.log.info("MSM output: " + str(output))
+            self.speak_dialog("installed", data={'skill': skill})
+
     @intent_handler(IntentBuilder("InstallIntent").require("Install"))
     def install(self, message):
         action = self.__translate_list('action')[0]
-        self.speak_dialog("installing")
         utterance = message.data['utterance'].lower()
         search = utterance.replace(message.data['Install'], '').strip()
         skills = self.search_for_skill(search, self.get_skill_list())
@@ -138,24 +156,43 @@ class SkillInstallerSkill(MycroftSkill):
             self.speak_dialog("not.found", dict(skill=search, action=action))
         elif len(skills) == 1:
             skill = skills[0]
-            try:
-                output = check_output([BIN, 'install', skill])
-            except subprocess.CalledProcessError as e:
-                self.log.error("MSM returned " + str(e.returncode) + ": " + e.output)
-                dialog = self.ERROR_DIALOGS.get(e.returncode, "installation.error")
-                self.speak_dialog(dialog, dict(skill=skill, action=action,
-                                               error=e.returncode))
-            else:
-                self.log.info("MSM output: " + str(output))
-                self.speak_dialog("installed", data={'skill': skill})
+            response = \
+                self.get_response('install.confirmation', dict(skill=skill))
+            yes_set = set(self.translate_list('yes'))
+            response_set = set(response.split())
+            if response and yes_set.intersection(response_set):
+                self.msm_installer(skill, action)
         else:
             if len(skills) < 8:
-                self.speak_dialog("choose", data={'skills': ", ".join(skills)})
+                # number generation is currently in english
+                numbered_skills = [
+                    str(i + 1) + ", " + skill
+                    for i, skill in enumerate(skills)
+                    ]
+                response = self.get_response(
+                    "choose", data={'skills': ", ".join(numbered_skills)})
+                for i, skill in enumerate(skills):
+                    if str(i + 1) in response:
+                        self.msm_installer(skill, action)
+                        break
+                else:
+                    best_match = (None, float("-inf"))
+                    for skill in skills:
+                        conf = SequenceMatcher(a=skill, b=response).ratio()
+                        if conf > 0.5 and conf > best_match[1]:
+                            best_match = (skill, conf)
+                            self.log.info(best_match)
+                    if best_match[0]:
+                        self.msm_installer(best_match[0], action)
             else:
                 self.speak_dialog('too.many.matches')
 
     def handle_list_skills(self, message):
         skill_list = self.get_skill_list()
+        skill_list = [
+            skill for skill in skill_list
+            if '[installed]' not in skill
+        ]
         shuffle(skill_list)
         skills = ', '.join(skill_list[:4])
         self.speak_dialog('some.available.skills', dict(skills=skills))
@@ -166,7 +203,6 @@ class SkillInstallerSkill(MycroftSkill):
             return
 
         action = self.__translate_list('action')[1]
-        self.speak_dialog("removing")
         search = message.data['skill']
         skills = self.search_for_skill(search, self.get_skill_list())
 
@@ -175,16 +211,30 @@ class SkillInstallerSkill(MycroftSkill):
         elif len(skills) == 1:
             skill = skills[0]
             # Invoke MSM to perform removal
-            try:
-                output = check_output([BIN, 'remove', skill])
-            except subprocess.CalledProcessError as e:
-                self.log.error("MSM returned " + str(e.returncode) + ": " + e.output)
-                dialog = self.ERROR_DIALOGS.get(e.returncode, "removal.error")
-                self.speak_dialog(dialog, data=dict(skill=skill, action=action,
-                                                    error=e.returncode))
-            else:
-                self.log.info("MSM output: " + str(output))
-                self.speak_dialog("removed", data={'skill': skill})
+            response = \
+                self.get_response('uninstall.confirmation', dict(skill=skill))
+            yes_set = set(self.translate_list('yes'))
+            response_set = set(response.split())
+            if response and yes_set.intersection(response_set):
+                self.speak_dialog("removing")
+                try:
+                    output = check_output([BIN, 'remove', skill])
+                except subprocess.CalledProcessError as e:
+                    self.log.error(
+                        "MSM returned " + str(e.returncode) + ": " + e.output)
+                    dialog = \
+                        self.ERROR_DIALOGS.get(e.returncode, "removal.error")
+                    self.speak_dialog(dialog, data=dict(
+                        skill=skill, action=action, error=e.returncode))
+                else:
+                    self.log.info("MSM output: " + str(output))
+                    self.speak_dialog("removed", data={'skill': skill})
+
+    def install_custom(self, message=None):
+        action = self.__translate_list('action')[0]
+        link = self.settings.get('installer_link')
+        if link:
+            self.msm_installer(link, action)
 
 
 def create_skill():
