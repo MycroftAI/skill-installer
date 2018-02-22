@@ -183,7 +183,7 @@ class SkillInstallerSkill(MycroftSkill):
                     self.speak_dialog(
                         'decline.install', data=dict(skill=skill))
             except AttributeError:
-                self.log('Running an older version')
+                self.log.info('Running an older version')
 
                 self.msm_install(skill, action)
         elif len(skills) < 8:
