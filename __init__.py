@@ -60,6 +60,10 @@ class SkillInstallerSkill(MycroftSkill):
         self.log = getLogger()
 
     def initialize(self):
+        installer = \
+            IntentBuilder("InstallIntent").require("Install").build()
+        self.register_intent(installer, self.install)
+
         try:  # backwards capatability
             self.register_intent_file('uninstall.intent', self.uninstall)
             self.register_intent_file(
@@ -156,7 +160,6 @@ class SkillInstallerSkill(MycroftSkill):
             self.log.info("MSM output: " + str(output))
             self.speak_dialog("installed", data={'skill': skill})
 
-    @intent_handler(IntentBuilder("InstallIntent").require("Install"))
     def install(self, message):
         action = self.__translate_list('action')[0]
         utterance = message.data['utterance'].lower()
