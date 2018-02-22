@@ -161,7 +161,10 @@ class SkillInstallerSkill(MycroftSkill):
             self.speak_dialog("installed", data={'skill': skill})
 
     def install(self, message):
-        action = self.__translate_list('action')[0]
+        try:  # backwards compatibility
+            action = self.__translate_list('action')[0]
+        except AttributeError:
+            action = 'installing'
         utterance = message.data['utterance'].lower()
         search = utterance.replace(message.data['Install'], '').strip()
         skills = self.search_for_skill(search, self.get_skill_list())
