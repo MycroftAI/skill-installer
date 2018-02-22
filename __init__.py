@@ -15,14 +15,14 @@ import subprocess
 from difflib import SequenceMatcher
 from random import shuffle
 from subprocess import check_output
-
 import re
-from adapt.intent import IntentBuilder
 from os.path import join, isfile
 
+from adapt.intent import IntentBuilder
 from mycroft import MYCROFT_ROOT_PATH
 from mycroft.configuration import ConfigurationManager
 from mycroft.skills.core import MycroftSkill, intent_handler
+from logging import getLogger
 
 
 installer_config = ConfigurationManager.instance().get("SkillInstallerSkill")
@@ -52,19 +52,23 @@ class SkillInstallerSkill(MycroftSkill):
     def __init__(self):
         super(SkillInstallerSkill, self).__init__(name="SkillInstallerSkill")
         self.ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
+        # TODO: Can be removed once all units are updated
+        # This is for backwards compatibility
+        self.log = getLogger()
 
     def initialize(self):
-        try:
+        try:  # backwards capatability
             self.register_intent_file('uninstall.intent', self.uninstall)
             self.register_intent_file(
                 'list.skills.intent', self.handle_list_skills)
             self.register_intent_file(
                 'install.custom.intent', self.install_custom)
+            self.settings.set_changed_callback(self._on_web_settings_changed)
         except AttributeError:
             self.log.exception('Running outdated version')
 
     def __translate_list(self, list_name):
-        try:
+        try:  # backwards capatability
             return self.translate_list(list_name)
         except AttributeError:
             list_file = join(self.vocab_dir, 'action.list')
@@ -131,7 +135,7 @@ class SkillInstallerSkill(MycroftSkill):
         else:
             return best_skills
 
-    def msm_installer(self, skill, action):
+    def msm_install(self, skill, action, from_web_settings=False):
         self.speak_dialog("installing")
         try:
             output = check_output([BIN, 'install', skill])
@@ -139,9 +143,13 @@ class SkillInstallerSkill(MycroftSkill):
             self.log.error(
                 "MSM returned " + str(e.returncode) + ": " + e.output)
             dialog = self.ERROR_DIALOGS.get(e.returncode, "installation.error")
+            if from_web_settings:
+                skill = self.get_custom_skill_name(skill)
             self.speak_dialog(dialog, dict(skill=skill, action=action,
                                            error=e.returncode))
         else:
+            if from_web_settings:
+                skill = self.get_custom_skill_name(skill)
             self.log.info("MSM output: " + str(output))
             self.speak_dialog("installed", data={'skill': skill})
 
@@ -156,24 +164,36 @@ class SkillInstallerSkill(MycroftSkill):
             self.speak_dialog("not.found", dict(skill=search, action=action))
         elif len(skills) == 1:
             skill = skills[0]
-            response = \
-                self.get_response('install.confirmation', dict(skill=skill))
-            yes_set = set(self.translate_list('yes'))
-            response_set = set(response.split())
-            if response and yes_set.intersection(response_set):
-                self.msm_installer(skill, action)
-        else:
-            if len(skills) < 8:
+            try:
+                response = self.get_response(
+                    'install.confirmation', dict(skill=skill))
+                yes_set = set(self.__translate_list('yes'))
+                if response and yes_set & set(response.split()):
+                    self.msm_install(skill, action)
+                else:
+                    self.speak_dialog(
+                        'decline.install', data=dict(skill=skill))
+            except AttributeError:
+                self.log('Running an older version')
+
+                self.msm_install(skill, action)
+        elif len(skills) < 8:
+            try:  # for backwards compatibility
                 # number generation is currently in english
                 numbered_skills = [
                     str(i + 1) + ", " + skill
                     for i, skill in enumerate(skills)
-                    ]
+                ]
                 response = self.get_response(
-                    "choose", data={'skills': ", ".join(numbered_skills)})
+                    "choose",
+                    data={
+                        'action': 'install',
+                        'skills': ", ".join(numbered_skills)},
+                    num_retries=0
+                )
                 for i, skill in enumerate(skills):
                     if str(i + 1) in response:
-                        self.msm_installer(skill, action)
+                        self.msm_install(skill, action)
                         break
                 else:
                     best_match = (None, float("-inf"))
@@ -183,9 +203,14 @@ class SkillInstallerSkill(MycroftSkill):
                             best_match = (skill, conf)
                             self.log.info(best_match)
                     if best_match[0]:
-                        self.msm_installer(best_match[0], action)
-            else:
+                        self.msm_install(best_match[0], action)
+                    else:
+                        self.speak_dialog(
+                            'decline.install', data=dict(skill='them'))
+            except AttributeError:
                 self.speak_dialog('too.many.matches')
+        else:
+            self.speak_dialog('too.many.matches')
 
     def handle_list_skills(self, message):
         skill_list = self.get_skill_list()
@@ -197,13 +222,34 @@ class SkillInstallerSkill(MycroftSkill):
         skills = ', '.join(skill_list[:4])
         self.speak_dialog('some.available.skills', dict(skills=skills))
 
+    def msm_uninstall(self, skill, action):
+        self.speak_dialog("removing")
+        try:
+            output = check_output([BIN, 'remove', skill])
+        except subprocess.CalledProcessError as e:
+            self.log.error(
+                "MSM returned " + str(e.returncode) + ": " + e.output)
+            dialog = \
+                self.ERROR_DIALOGS.get(e.returncode, "removal.error")
+            self.speak_dialog(dialog, data=dict(
+                skill=skill, action=action, error=e.returncode))
+        else:
+            self.log.info("MSM output: " + str(output))
+            self.speak_dialog("removed", data={'skill': skill})
+
     def uninstall(self, message):
         if 'skill' not in message.data:
-            self.speak_dialog('remove.not.found')
+            self.speak_dialog('remove.not.found.no.skill')
             return
 
         action = self.__translate_list('action')[1]
         search = message.data['skill']
+        self.log.info(self.get_skill_list())
+        skill_list = [
+            i.replace('[installed]', "")
+            for i in self.get_skill_list() if '[installed]' in i
+        ]
+        self.log.info(skill_list)
         skills = self.search_for_skill(search, self.get_skill_list())
 
         if not skills:
@@ -211,30 +257,80 @@ class SkillInstallerSkill(MycroftSkill):
         elif len(skills) == 1:
             skill = skills[0]
             # Invoke MSM to perform removal
-            response = \
-                self.get_response('uninstall.confirmation', dict(skill=skill))
-            yes_set = set(self.translate_list('yes'))
-            response_set = set(response.split())
-            if response and yes_set.intersection(response_set):
-                self.speak_dialog("removing")
-                try:
-                    output = check_output([BIN, 'remove', skill])
-                except subprocess.CalledProcessError as e:
-                    self.log.error(
-                        "MSM returned " + str(e.returncode) + ": " + e.output)
-                    dialog = \
-                        self.ERROR_DIALOGS.get(e.returncode, "removal.error")
-                    self.speak_dialog(dialog, data=dict(
-                        skill=skill, action=action, error=e.returncode))
+            response = self.get_response(
+                'uninstall.confirmation',
+                dict(skill=skill), num_retries=0
+            )
+            yes_set = set(self.__translate_list('yes'))
+            if response and yes_set & set(response.split()):
+                self.msm_uninstall(skill, action)
+            else:
+                self.speak_dialog('decline.removal', data={'skill': skill})
+        elif len(skills) > 1:
+            # number generation is currently in english
+            numbered_skills = [
+                str(i + 1) + ", " + skill
+                for i, skill in enumerate(skills)
+            ]
+            response = self.get_response(
+                "choose",
+                data={
+                    'action': 'uninstall',
+                    'skills': ", ".join(numbered_skills)
+                },
+                num_retries=0
+            )
+            for i, skill in enumerate(skills):
+                if str(i + 1) in response:
+                    self.msm_uninstall(skill, action)
+                    break
+            else:
+                best_match = (None, float("-inf"))
+                for skill in skills:
+                    conf = SequenceMatcher(a=skill, b=response).ratio()
+                    if conf > 0.5 and conf > best_match[1]:
+                        best_match = (skill, conf)
+                        self.log.info(best_match)
+                if best_match[0]:
+                    self.msm_uninstall(best_match[0], action)
                 else:
-                    self.log.info("MSM output: " + str(output))
-                    self.speak_dialog("removed", data={'skill': skill})
+                    self.speak_dialog(
+                        'decline.removal', data=dict(skill='them'))
 
-    def install_custom(self, message=None):
+    def get_custom_skill_name(self, url):
+        forward_slash_count = 0
+        skill_name = []
+        self.log.info(url)
+        for letter in url.decode("utf-8"):
+            if forward_slash_count >= 4:
+                skill_name.append(letter)
+            if letter == '/':
+                forward_slash_count += 1
+        return "".join(skill_name[:-4])
+
+    def install_custom(self, message):
         action = self.__translate_list('action')[0]
         link = self.settings.get('installer_link')
         if link:
-            self.msm_installer(link, action)
+            self.msm_install(link, action, from_web_settings=True)
+
+    def _on_web_settings_changed(self):
+        self.log.info('onchaged callback')
+        previous_link = self.settings.get('previous_link')
+        new_link = self.settings.get('installer_link')
+        auto_install = \
+            True if self.settings.get('auto_install') == 'true' else False
+
+        def install():
+            action = self.__translate_list('action')[0]
+            self.msm_install(new_link, action, from_web_settings=True)
+            self.settings['previous_link'] = new_link
+
+        if new_link and auto_install:
+            if previous_link is None:
+                install()
+            elif previous_link != new_link:
+                install()
 
 
 def create_skill():
