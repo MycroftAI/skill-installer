@@ -1,4 +1,4 @@
-# Copyright 2017 Mycroft AI Inc.
+#  Copyright 2017 Mycroft AI Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ BIN = installer_config.get("path", join(MYCROFT_ROOT_PATH, 'msm', 'msm'))
 # devices are updated to be 0.9.1+
 class SkillInstallerSkill(MycroftSkill):
     # Words STT incorrectly transcribes "skill" to
+    # TODO:18.02 Support translations
     SKILL_WORDS = ['scale', 'steel']
     COMMON_TOKENS = ['skill', 'fallback', 'mycroft']
     ERROR_DIALOGS = {
@@ -192,18 +193,28 @@ class SkillInstallerSkill(MycroftSkill):
         elif len(skills) < 8:
             try:  # for backwards compatibility
                 # number generation is currently in english
-                numbered_skills = [
-                    str(i + 1) + ", " + skill
+                l = [
+                    str(i + 1) + ": " + skill
                     for i, skill in enumerate(skills)
                 ]
+
+                joined_list = ', '.join(l[:-1]) + " or " + l[-1]
+                # TODO:18.02 Support translations
+                # joined_list = ', '.join(l[:-1]) + " or " + \
+                #       self.translate("or") + " " + l[-1]
+
                 response = self.get_response(
                     "choose",
                     data={
                         'action': 'install',
-                        'skills': ", ".join(numbered_skills)},
-                    num_retries=0
+                        'skills': joined_list},
+                    num_retries=1
                 )
+                if not response:
+                    return
+
                 for i, skill in enumerate(skills):
+                    self.log.info("REsponse: " + str(response))
                     if str(i + 1) in response:
                         self.msm_install(skill, action)
                         break
@@ -256,6 +267,8 @@ class SkillInstallerSkill(MycroftSkill):
 
         action = self.__translate_list('action')[1]
         search = message.data['skill']
+
+        # TODO: Only look for skills that are already installed
         self.log.info(self.get_skill_list())
         skill_list = [
             i.replace('[installed]', "")
@@ -280,18 +293,27 @@ class SkillInstallerSkill(MycroftSkill):
                 self.speak_dialog('decline.removal', data={'skill': skill})
         elif len(skills) > 1:
             # number generation is currently in english
-            numbered_skills = [
+            l = [
                 str(i + 1) + ", " + skill
                 for i, skill in enumerate(skills)
             ]
+
+            joined_list = ', '.join(l[:-1]) + " or " + l[-1]
+            # TODO:18.02 Support translations
+            # joined_list = ', '.join(l[:-1]) + " or " + \
+            #       self.translate("or") + " " + l[-1]
+
             response = self.get_response(
                 "choose",
                 data={
                     'action': 'uninstall',
-                    'skills': ", ".join(numbered_skills)
+                    'skills': joined_list
                 },
                 num_retries=0
             )
+            if not response:
+                return
+
             for i, skill in enumerate(skills):
                 if str(i + 1) in response:
                     self.msm_uninstall(skill, action)
