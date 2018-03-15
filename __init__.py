@@ -93,7 +93,7 @@ class SkillInstallerSkill(MycroftSkill):
         """Finds the names of all available"""
         return [
             i.strip() for i in
-            self.ansi_escape.sub('', check_output([BIN, 'list'])).split('\n')
+            self.ansi_escape.sub('', check_output([BIN, 'list']).decode('utf-8')).split('\n')
         ]
 
     def search_for_skill(self, search, skill_list):
