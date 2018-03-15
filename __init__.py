@@ -149,7 +149,7 @@ class SkillInstallerSkill(MycroftSkill):
     def msm_install(self, skill, action, from_web_settings=False):
         self.speak_dialog("installing")
         try:
-            output = check_output([BIN, 'install', skill])
+            output = check_output([BIN, 'install', skill]).decode('utf-8')
         except subprocess.CalledProcessError as e:
             self.log.error(
                 "MSM returned " + str(e.returncode) + ": " + e.output)
@@ -248,7 +248,7 @@ class SkillInstallerSkill(MycroftSkill):
     def msm_uninstall(self, skill, action):
         self.speak_dialog("removing")
         try:
-            output = check_output([BIN, 'remove', skill])
+            output = check_output([BIN, 'remove', skill]).decode('utf-8')
         except subprocess.CalledProcessError as e:
             self.log.error(
                 "MSM returned " + str(e.returncode) + ": " + e.output)
