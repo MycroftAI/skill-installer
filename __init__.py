@@ -171,7 +171,13 @@ class SkillInstallerSkill(MycroftSkill):
             action = 'installing'
         utterance = message.data['utterance'].lower()
         search = utterance.replace(message.data['Install'], '').strip()
-        skills = self.search_for_skill(search, self.get_skill_list())
+        try:
+            skills = self.search_for_skill(search, self.get_skill_list())
+        except subprocess.CalledProcessError as e:
+            self.log.error(
+                "MSM returned " + str(e.returncode) + ": " + e.output)
+            self.speak_dialog("skill.list.failed")
+            return
 
         if not skills:
             self.speak_dialog("not.found", dict(skill=search, action=action))
