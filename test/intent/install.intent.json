@@ -1,8 +1,8 @@
 {
-  "utterance": "install white house adventure",
+  "utterance": "install the froody hoop-a-doop",
   "intent_type": "InstallIntent",
   "intent": {
     "Install": "install"
   },
-  "expected_dialog": "install.confirmation"
+  "expected_dialog": "not.found"
 }
