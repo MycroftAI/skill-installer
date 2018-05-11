@@ -17,7 +17,7 @@ from random import shuffle
 from msm import SkillNotFound, SkillRequirementsException, \
     PipRequirementsException, SystemRequirementsException, CloneException, \
     GitException, AlreadyRemoved, AlreadyInstalled, MsmException, SkillEntry, \
-    MultipleSkillMatches
+    MultipleSkillMatches, MycroftSkillsManager
 from mycroft import intent_file_handler, MycroftSkill
 from mycroft.skills.main import SkillManager
 
@@ -25,7 +25,10 @@ from mycroft.skills.main import SkillManager
 class SkillInstallerSkill(MycroftSkill):
     def __init__(self):
         super().__init__()
-        self.msm = SkillManager.create_msm()
+        try:
+            self.msm = SkillManager.create_msm()
+        except AttributeError:
+            self.msm = MycroftSkillsManager()
         self.yes_words = self.install_word = self.remove_word = None
 
     def initialize(self):
