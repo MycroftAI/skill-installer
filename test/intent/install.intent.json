@@ -1,8 +1,7 @@
 {
-  "utterance": "install the froody hoop-a-doop",
-  "intent_type": "InstallIntent",
-  "intent": {
-    "Install": "install"
+  "utterance": "install the froody hoop a doop",
+  "expected_data": {
+    "skill": "froody hoop a doop"
   },
-  "expected_dialog": "not.found"
+  "expected_dialog": "error.not.found"
 }
