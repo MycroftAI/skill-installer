@@ -93,7 +93,7 @@ class SkillInstallerSkill(MycroftSkill):
         """Finds the names of all available"""
         return [
             i.strip() for i in
-            self.ansi_escape.sub('', check_output([BIN, 'list'])).split('\n')
+            self.ansi_escape.sub('', check_output([BIN, 'list']).decode('utf-8')).split('\n')
         ]
 
     def search_for_skill(self, search, skill_list):
@@ -149,7 +149,7 @@ class SkillInstallerSkill(MycroftSkill):
     def msm_install(self, skill, action, from_web_settings=False):
         self.speak_dialog("installing")
         try:
-            output = check_output([BIN, 'install', skill])
+            output = check_output([BIN, 'install', skill]).decode('utf-8')
         except subprocess.CalledProcessError as e:
             self.log.error(
                 "MSM returned " + str(e.returncode) + ": " + e.output)
@@ -248,7 +248,7 @@ class SkillInstallerSkill(MycroftSkill):
     def msm_uninstall(self, skill, action):
         self.speak_dialog("removing")
         try:
-            output = check_output([BIN, 'remove', skill])
+            output = check_output([BIN, 'remove', skill]).decode('utf-8')
         except subprocess.CalledProcessError as e:
             self.log.error(
                 "MSM returned " + str(e.returncode) + ": " + e.output)
