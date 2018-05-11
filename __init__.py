@@ -24,7 +24,7 @@ from mycroft.skills.main import SkillManager
 
 class SkillInstallerSkill(MycroftSkill):
     def __init__(self):
-        super().__init__()
+        super(SkillInstallerSkill, self).__init__()
         try:
             self.msm = SkillManager.create_msm()
         except AttributeError:
