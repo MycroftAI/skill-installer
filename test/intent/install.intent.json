@@ -1,7 +1,0 @@
-{
-  "utterance": "install the froody hoop a doop",
-  "expected_data": {
-    "skill": "the froody hoop a doop"
-  },
-  "expected_dialog": "error.not.found"
-}

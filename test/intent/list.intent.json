@@ -1,0 +1,5 @@
+{
+  "utterance": "list available skills",
+  "intent_type": "list.skills.intent",
+  "expected_dialog": "some.available.skills"
+}
