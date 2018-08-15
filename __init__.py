@@ -36,27 +36,93 @@ class SkillInstallerSkill(MycroftSkill):
         self.install_word, self.remove_word = self.translate_list('action')
         self.yes_words = set(self.translate_list('yes'))
 
+    def load_skills_data(self):
+        """Compatibility wrapper. Remove in 18.08"""
+        return getattr(SkillManager, 'load_skills_data', lambda: {})()
+
+    def write_skills_data(self, skills_data):
+        """Compatibility wrapper. Remove in 18.08"""
+        getattr(SkillManager, 'write_skills_data', lambda x: None)(skills_data)
+
     @intent_file_handler('install.intent')
     def install(self, message):
-        def check_installed(skill):
-            if skill.is_local:
+        with self.handle_msm_errors(message.data['skill'], self.remove_word):
+            skill = self.find_skill(message.data['skill'], False)
+            skills_data = self.load_skills_data()
+            skill_data = skills_data.setdefault(skill.name, {})
+            was_beta = skill_data.get('beta')
+
+            if not was_beta and skill.is_local:
                 raise AlreadyInstalled(skill.name)
 
-        self.confirmable_interaction(
-            SkillEntry.install, False, check_installed, message.data,
-            self.install_word, 'install.confirm', 'install.complete'
-        )
+            if skill.is_local:
+                dialog = 'install.reinstall.confirm'
+            else:
+                dialog = 'install.confirm'
+
+            if not self.confirm_skill_action(skill, dialog):
+                return
+
+            skill_data['beta'] = False
+            skill_data['manual_install'] = True
+            self.write_skills_data(skills_data)
+
+            if skill.is_local:
+                skill.remove()
+                skill.install()
+            else:
+                skill.install()
+
+            self.speak_dialog('install.complete', dict(skill=skill.name))
+
+    @intent_file_handler('install.beta.intent')
+    def install_beta(self, message):
+        with self.handle_msm_errors(message.data['skill'], self.remove_word):
+            skill = self.find_skill(message.data['skill'], False)
+            skill.sha = None
+            skills_data = self.load_skills_data()
+            skill_data = skills_data.setdefault(skill.name, {})
+            was_beta = skill_data.get('beta')
+
+            if was_beta and skill.is_local:
+                self.speak_dialog('error.already.beta', dict(skill=skill.name))
+                return
+
+            if skill.is_local:
+                dialog = 'install.beta.upgrade.confirm'
+            else:
+                dialog = 'install.beta.confirm'
+
+            if not self.confirm_skill_action(skill, dialog):
+                return
+
+            skill_data['beta'] = True
+            skill_data['manual_install'] = True
+            self.write_skills_data(skills_data)
+
+            if skill.is_local:
+                skill.update()
+            else:
+                skill.install()
+
+            self.speak_dialog('install.beta.complete', dict(skill=skill.name))
 
     @intent_file_handler('remove.intent')
     def remove(self, message):
-        def check_removed(skill):
+        with self.handle_msm_errors(message.data['skill'], self.remove_word):
+            skill = self.find_skill(message.data['skill'], True)
             if not skill.is_local:
                 raise AlreadyRemoved(skill.name)
 
-        self.confirmable_interaction(
-            SkillEntry.remove, True, check_removed, message.data,
-            self.remove_word, 'remove.confirm', 'remove.complete'
-        )
+            if not self.confirm_skill_action(skill, 'remove.confirm'):
+                return
+
+            skill.remove()
+            skills_data = self.load_skills_data()
+            if skill.name in skills_data:
+                del skills_data[skill.name]
+            self.write_skills_data(skills_data)
+            self.speak_dialog('remove.complete', dict(skill=skill.name))
 
     @intent_file_handler('list.skills.intent')
     def handle_list_skills(self, message):
@@ -75,9 +141,8 @@ class SkillInstallerSkill(MycroftSkill):
 
     @contextmanager
     def handle_msm_errors(self, skill, action):
-        data = {'skill': skill, 'action': action}
         try:
-            yield data
+            yield
         except MsmException as e:
             error_dialog = {
                 SkillNotFound: 'error.not.found',
@@ -90,6 +155,7 @@ class SkillInstallerSkill(MycroftSkill):
                 AlreadyInstalled: 'error.already.installed',
                 MultipleSkillMatches: 'error.multiple.skills'
             }.get(type(e), 'error.other')
+            data = {'skill': skill, 'action': action}
             if isinstance(e, (SkillNotFound, AlreadyRemoved,
                               AlreadyInstalled)):
                 data['skill'] = str(e)
@@ -113,25 +179,17 @@ class SkillInstallerSkill(MycroftSkill):
             with self.handle_msm_errors(name, action):
                 self.msm.install(link)
 
-    def confirmable_interaction(self, do_action, local, verify, data, action,
-                                confirm_dialog, complete_dialog):
-        if 'skill' not in data:
-            self.speak_dialog('error.not.found', {'skill': ''})
-            return
+    def confirm_skill_action(self, skill, confirm_dialog):
+        response = self.get_response(
+            confirm_dialog, num_retries=0,
+            data={'skill': skill.name, 'author': skill.author}
+        )
 
-        with self.handle_msm_errors(data['skill'], action) as data:
-            skill = self.find_skill(data['skill'], local)
-            verify(skill)
-            response = self.get_response(
-                confirm_dialog, num_retries=0,
-                data={'skill': skill.name, 'author': skill.author}
-            )
-
-            if response and self.yes_words & set(response.split()):
-                do_action(skill)
-                self.speak_dialog(complete_dialog, data)
-            else:
-                self.speak_dialog('cancelled')
+        if response and self.yes_words & set(response.split()):
+            return True
+        else:
+            self.speak_dialog('cancelled')
+            return False
 
     def find_skill(self, param, local):
         """Find a skill, asking if multiple are found"""
