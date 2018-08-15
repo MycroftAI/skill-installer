@@ -1,1 +1,4 @@
 install {skill}.
+install {skill} (version|) stable.
+install stable (version|of|) {skill}.
+install version stable of {skill}.
