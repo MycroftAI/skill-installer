@@ -32,7 +32,7 @@ class SkillInstallerSkill(MycroftSkill):
         self.yes_words = self.install_word = self.remove_word = None
 
     def initialize(self):
-        self.settings.set_changed_callback(self.on_web_settings_change())
+        self.settings.set_changed_callback(self.on_web_settings_change)
         self.install_word, self.remove_word = self.translate_list('action')
         self.yes_words = set(self.translate_list('yes'))
 
