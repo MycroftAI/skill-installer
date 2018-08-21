@@ -214,7 +214,7 @@ class SkillInstallerSkill(MycroftSkill):
             )
             if not response:
                 raise StopIteration
-            return self.msm.find_skill(response, skills=e.skills)
+            return self.msm.find_skill(response, skills=skills)
 
     def stop(self):
         pass
