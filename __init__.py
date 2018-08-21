@@ -19,7 +19,11 @@ from msm import SkillNotFound, SkillRequirementsException, \
     GitException, AlreadyRemoved, AlreadyInstalled, MsmException, SkillEntry, \
     MultipleSkillMatches, MycroftSkillsManager
 from mycroft import intent_file_handler, MycroftSkill
-from mycroft.skills.main import SkillManager
+
+try:
+    from mycroft.skills.skill_manager import SkillManager
+except ImportError:
+    from mycroft.skills.main import SkillManager
 
 
 class SkillInstallerSkill(MycroftSkill):
