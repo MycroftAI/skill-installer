@@ -1,14 +1,13 @@
 ## Installer
-Skill installer system
+Install Mycroft Skills using voice commands
 
 ## Description
-Add and remove skills using the Mycroft Skill Manager (MSM).  Install a
-skill verbally by saying "install <skill identifier>", where <skill
-identifier> is the full name or at least adequate subset of the name to
-uniquely identify the skill.  See the list of skill names at the 
-[mycroft-skills repo](https://github.com/MycroftAI/mycroft-skills#community-contributed-skill-list).
+Add and remove Skills using `msm` - the [Mycroft Skill Manager](https://mycroft.ai/documentation/msm].  Install a
+Skill verbally by saying `Install SKILL-IDENTIFIER`, where `SKILL-IDENTIFIER` is the full name or at least adequate subset of the name to uniquely identify the Skill.  
 
-You can also install skills that are not registered by entering the repo's
+[See the full list of available Mycroft Skills.](https://mycroft.ai/skills)
+
+You can also install Skills that are not in the `mycroft-skills` official repo by entering the Skill's GitHub repo
 URL in the [Installer web user interface](https://home.mycroft.ai/#/skill).
 
 ## Examples
@@ -18,4 +17,4 @@ URL in the [Installer web user interface](https://home.mycroft.ai/#/skill).
 * "Download custom skill"
 
 ## Credits
-Mycroft AI, Inc.
+@MycroftAI
