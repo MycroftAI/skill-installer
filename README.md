@@ -1,4 +1,4 @@
-# <img src='https://rawgithub.com/FortAwesome/Font-Awesome/master/advanced-options/raw-svg/solid/download.svg ' card_color='#22a7f0' width='50' height='50' style='vertical-align:bottom'/> Installer
+# <img src='https://rawgithub.com/FortAwesome/Font-Awesome/master/advanced-options/raw-svg/solid/download.svg' card_color='#22a7f0' width='50' height='50' style='vertical-align:bottom'/> Installer
 Install Mycroft Skills using voice commands
 
 ## About 
