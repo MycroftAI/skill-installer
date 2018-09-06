@@ -50,6 +50,10 @@ class SkillInstallerSkill(MycroftSkill):
 
     @intent_file_handler('install.intent')
     def install(self, message):
+        # Failsafe if padatious matches without skill entity.
+        if not message.data.get('skill'):
+            return self.handle_list_skills(message)
+
         with self.handle_msm_errors(message.data['skill'], self.remove_word):
             skill = self.find_skill(message.data['skill'], False)
             skills_data = self.load_skills_data()
