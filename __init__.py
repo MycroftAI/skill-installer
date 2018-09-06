@@ -206,15 +206,18 @@ class SkillInstallerSkill(MycroftSkill):
                 self.speak_dialog('error.too.many.skills')
                 raise StopIteration
             names = [skill.name for skill in skills]
-            response = self.get_response(
-                'choose.skill', num_retries=0,
-                data={'skills': ' '.join([
-                    ', '.join(names[:-1]), or_word, names[-1]
-                ])},
-            )
-            if not response:
-                raise StopIteration
-            return self.msm.find_skill(response, skills=skills)
+            if names:
+                response = self.get_response(
+                    'choose.skill', num_retries=0,
+                    data={'skills': ' '.join([
+                        ', '.join(names[:-1]), or_word, names[-1]
+                    ])},
+                )
+                if not response:
+                    raise StopIteration
+                return self.msm.find_skill(response, skills=skills)
+            else:
+                raise SkillNotFound(param)
 
     def stop(self):
         pass
