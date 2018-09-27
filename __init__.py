@@ -134,7 +134,7 @@ class SkillInstallerSkill(MycroftSkill):
             else:
                 dialog = 'not.installed'
 
-            self.speak_dialog(dialog, dict(skill=skill.name))
+            self.speak_dialog(dialog, dict(skill=self.clean_name(skill)))
 
     @intent_file_handler('list.skills.intent')
     def handle_list_skills(self, message):
