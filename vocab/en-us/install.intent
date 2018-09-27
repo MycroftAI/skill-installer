@@ -1,4 +1,4 @@
 install {skill}.
-install {skill} (version|) stable.
-install stable (version|of|) {skill}.
-install version stable of {skill}.
+install {skill} (version|) (stable|official).
+install (the|) (official|stable) (version|of|) {skill}.
+install official release (version|) of {skill}.
