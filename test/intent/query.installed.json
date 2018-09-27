@@ -1,0 +1,5 @@
+{
+  "utterance": "is mycroft installer installed",
+  "intent_type": "is.installed.intent",
+  "expected_dialog": "installed"
+}
