@@ -20,23 +20,12 @@ from msm import SkillNotFound, SkillRequirementsException, \
     MultipleSkillMatches, MycroftSkillsManager
 from mycroft import intent_file_handler, MycroftSkill
 from mycroft.skills.skill_manager import SkillManager
-from mycroft.api import DeviceApi
-
-
-def get_entry(skills_data, name):
-    for entry in skills_data['skills']:
-        if entry.get('name') == name:
-            break
-    else:
-        entry = {}
-    return entry
 
 
 class SkillInstallerSkill(MycroftSkill):
     def __init__(self):
         super().__init__()
         self.msm = SkillManager.create_msm()
-        self.thread_lock = SkillManager.get_lock()
         self.install_word = self.remove_word = None
 
     def initialize(self):
@@ -51,27 +40,31 @@ class SkillInstallerSkill(MycroftSkill):
 
         with self.handle_msm_errors(message.data['skill'], self.remove_word):
             skill = self.find_skill(message.data['skill'], False)
-            with self.msm.lock, self.thread_lock:
-                self.msm.sync_skills_data()
-                entry = get_entry(self.msm.skills_data, skill.name)
-                was_beta = entry.get('beta')
+            skills_data = SkillManager.load_skills_data()
+            skill_data = skills_data.setdefault(skill.name, {})
+            was_beta = skill_data.get('beta')
 
-                if not was_beta and skill.is_local:
-                    raise AlreadyInstalled(skill.name)
+            if not was_beta and skill.is_local:
+                raise AlreadyInstalled(skill.name)
 
-                if skill.is_local:
-                    dialog = 'install.reinstall.confirm'
-                else:
-                    dialog = 'install.confirm'
+            if skill.is_local:
+                dialog = 'install.reinstall.confirm'
+            else:
+                dialog = 'install.confirm'
 
-                if not self.confirm_skill_action(skill, dialog):
-                    return
-                if skill.is_local:
-                    self.msm.remove(skill.name)
-                    skill.is_local = False # ?
-                self.msm.install(skill, origin='voice')
-                self.msm.write_skills_data()
-            self.upload_skills_data(self.msm.skills_data)
+            if not self.confirm_skill_action(skill, dialog):
+                return
+
+            skill_data['beta'] = False
+            skill_data['manual_install'] = True
+            SkillManager.write_skills_data(skills_data)
+
+            if skill.is_local:
+                skill.remove()
+                skill.install()
+            else:
+                skill.install()
+
             self.speak_dialog('install.complete',
                               dict(skill=self.clean_name(skill)))
 
@@ -80,30 +73,32 @@ class SkillInstallerSkill(MycroftSkill):
         with self.handle_msm_errors(message.data['skill'], self.remove_word):
             skill = self.find_skill(message.data['skill'], False)
             skill.sha = None
-            with self.msm.lock, self.thread_lock:
-                self.msm.sync_skills_data()
-                entry = get_entry(self.msm.skills_data, self.name)
-                was_beta = entry.get('beta')
+            skills_data = SkillManager.load_skills_data()
+            skill_data = skills_data.setdefault(skill.name, {})
+            was_beta = skill_data.get('beta')
 
-                if was_beta and skill.is_local:
-                    self.speak_dialog('error.already.beta',
-                                      dict(skill=self.clean_name(skill)))
-                    return
+            if was_beta and skill.is_local:
+                self.speak_dialog('error.already.beta',
+                                  dict(skill=self.clean_name(skill)))
+                return
 
-                if skill.is_local:
-                    dialog = 'install.beta.upgrade.confirm'
-                else:
-                    dialog = 'install.beta.confirm'
+            if skill.is_local:
+                dialog = 'install.beta.upgrade.confirm'
+            else:
+                dialog = 'install.beta.confirm'
 
-                if not self.confirm_skill_action(skill, dialog):
-                    return
+            if not self.confirm_skill_action(skill, dialog):
+                return
 
-                if skill.is_local:
-                    self.msm.update(skill)
-                else:
-                    self.msm.install(skill, origin='voice')
-                self.msm.write_skills_data()
-            self.upload_skills_data(self.msm.skills_data)
+            skill_data['beta'] = True
+            skill_data['manual_install'] = True
+            SkillManager.write_skills_data(skills_data)
+
+            if skill.is_local:
+                skill.update()
+            else:
+                skill.install()
+
             self.speak_dialog('install.beta.complete',
                               dict(skill=self.clean_name(skill)))
 
@@ -117,13 +112,13 @@ class SkillInstallerSkill(MycroftSkill):
             if not self.confirm_skill_action(skill, 'remove.confirm'):
                 return
 
-            with self.msm.lock, self.thread_lock:
-                self.msm.sync_skills_data()
-                self.msm.remove(skill)
-                self.msm.write_skills_data(self.msm.skills_data)
+            skill.remove()
+            skills_data = SkillManager.load_skills_data()
+            if skill.name in skills_data:
+                del skills_data[skill.name]
+            SkillManager.write_skills_data(skills_data)
             self.speak_dialog('remove.complete',
                               dict(skill=self.clean_name(skill)))
-            self.upload_skills_data(self.msm.skills_data)
 
     @intent_file_handler('list.skills.intent')
     def handle_list_skills(self, message):
@@ -187,64 +182,6 @@ class SkillInstallerSkill(MycroftSkill):
             with self.handle_msm_errors(name, action):
                 self.msm.install(link)
 
-        with self.msm.lock, self.thread_lock:
-            self.msm.sync_skills_data()
-            self.__marketplace_install(to_install)
-            self.__marketplace_remove(to_remove)
-            self.msm.write_skills_data()
-        self.upload_skills_data(self.msm.skills_data)
-
-    def __filter_by_uuid(self, skills):
-        """ Return only skills intended for this device.
-
-        Keeps entrys where the devices field is None of contains the uuid
-        of the current device.
-
-        Arguments:
-            skills: skill list from to_install or to_remove
-
-        Returns:
-            filtered list
-        """
-        uuid = DeviceApi().get()['uuid']
-        return [s for s in skills if not s['devices'] or uuid in s['devices']]
-
-    def __marketplace_install(self, install_list):
-        if isinstance(install_list, str):
-            install_list = json.loads(install_list)
-        install_list = self.__filter_by_uuid(install_list)
-        # Split skill name from author
-        skills = [s['name'].split('.')[0] for s in install_list]
-
-        self.log.info('Will install {} from the marketplace'.format(skills))
-        # Remove already installed skills from skills to install
-        installed_skills = [s.name for s in self.msm.list() if s.is_local]
-        skills = [s for s in skills if s not in installed_skills]
-
-        self.log.info('Will install {} from the marketplace'.format(skills))
-
-        def install(skill):
-            self.msm.install(skill, origin='marketplace')
-
-        result = self.msm.apply(install, skills)
-
-    def __marketplace_remove(self, remove_list):
-        # Work around backend sending this as json string
-        if isinstance(remove_list, str):
-            remove_list = json.loads(remove_list)
-
-        remove_list = self.__filter_by_uuid(remove_list)
-
-        # Split skill name from author
-        skills = [skill['name'].split('.')[0] for skill in remove_list]
-        self.log.info('Will remove {} from the marketplace'.format(skills))
-        # Remove not installed skills from skills to remove
-        installed_skills = [s.name for s in self.msm.list() if s.is_local]
-        skills = [s for s in skills if s in installed_skills]
-
-        self.log.info('Will remove {} from the marketplace'.format(skills))
-        result = self.msm.apply(self.msm.remove, skills)
-
     def clean_author(self, skill):
         # TODO: Retrieve and use author from skill-data.json
         if skill.author == "mycroftai":
@@ -293,14 +230,6 @@ class SkillInstallerSkill(MycroftSkill):
                 return self.msm.find_skill(response, skills=skills)
             else:
                 raise SkillNotFound(param)
-
-    def upload_skills_data(self, skills_data):
-        if self.config_core['skills'].get('upload_skill_manifest', False):
-            try:
-                DeviceApi().upload_skills_data(skills_data)
-            except Exception as e:
-                self.log.error('An exception occured while uploading the '
-                               ' skills manifest ({})'.format(repr(e)))
 
 
 def create_skill():
