@@ -13,6 +13,7 @@
 # limitations under the License.
 from contextlib import contextmanager
 from random import shuffle
+import time
 
 from msm import SkillNotFound, SkillRequirementsException, \
     PipRequirementsException, SystemRequirementsException, CloneException, \
@@ -20,7 +21,7 @@ from msm import SkillNotFound, SkillRequirementsException, \
     MultipleSkillMatches, MycroftSkillsManager
 from mycroft import intent_file_handler, MycroftSkill
 from mycroft.skills.skill_manager import SkillManager
-
+from mycroft.api import DeviceApi
 
 class SkillInstallerSkill(MycroftSkill):
     def __init__(self):
@@ -35,6 +36,7 @@ class SkillInstallerSkill(MycroftSkill):
     @intent_file_handler('install.intent')
     def install(self, message):
         # Failsafe if padatious matches without skill entity.
+
         if not message.data.get('skill'):
             return self.handle_list_skills(message)
 
@@ -181,6 +183,77 @@ class SkillInstallerSkill(MycroftSkill):
             name = SkillEntry.extract_repo_name(link)
             with self.handle_msm_errors(name, action):
                 self.msm.install(link)
+
+        to_install = s.get('to_install', [])
+        to_remove = s.get('to_remove', [])
+        skills_data = SkillManager.load_skills_data()
+
+        installed = self.__marketplace_install(to_install)
+        for skill in installed:
+            skill_data = skills_data.setdefault(skill, {})
+            skill_data['origin'] = 'marketplace'
+            skill_data['installation'] = 'installed'
+            skill_data['installed'] = time.time()
+            skill_data['updated'] = 0
+        removed = self.__marketplace_remove(to_remove)
+        for skill in removed:
+            if skill in skills_data:
+                del skills_data[skill]
+
+        SkillManager.write_skills_data(skills_data)
+
+    def __filter_by_uuid(self, skills):
+        """ Return only skills intended for this device.
+
+        Keeps entrys where the devices field is None of contains the uuid
+        of the current device.
+
+        Arguments:
+            skills: skill list from to_install or to_remove
+
+        Returns:
+            filtered list
+        """
+        uuid = DeviceApi().get()['uuid']
+        return [s for s in skills if not s['devices'] or uuid in s['devices']]
+
+    def __marketplace_install(self, install_list):
+        if isinstance(install_list, str):
+            install_list = json.loads(install_list)
+        install_list = self.__filter_by_uuid(install_list)
+        # Split skill name from author
+        skills = [s['name'].split('.')[0] for s in install_list]
+
+        # Remove already installed skills from skills to install
+        installed_skills = [s.name for s in self.msm.list() if s.is_local]
+        skills = [s for s in skills if s not in installed_skills]
+
+        self.log.info('Will install {} from the marketplace'.format(skills))
+
+        def install(skill):
+            self.msm.install(skill)
+
+        result = self.msm.apply(install, skills)
+        return skills
+
+    def __marketplace_remove(self, remove_list):
+        # Work around backend sending this as json string
+        if isinstance(remove_list, str):
+            remove_list = json.loads(remove_list)
+
+        remove_list = self.__filter_by_uuid(remove_list)
+
+        # Split skill name from author
+        skills = [skill['name'].split('.')[0] for skill in remove_list]
+        self.log.info('Will remove {} from the marketplace'.format(skills))
+        # Remove not installed skills from skills to remove
+        installed_skills = [s.name for s in self.msm.list() if s.is_local]
+        skills = [s for s in skills if s in installed_skills]
+
+        self.log.info('Will remove {} from the marketplace'.format(skills))
+        result = self.msm.apply(self.msm.remove, skills)
+        return skills
+
 
     def clean_author(self, skill):
         # TODO: Retrieve and use author from skill-data.json
