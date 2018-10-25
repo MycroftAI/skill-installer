@@ -22,7 +22,17 @@
                         "type": "checkbox",
                         "label": "Automatic Install",
                         "value": "false"
-                    }
+                    },
+		    {
+		        "name": "to_install",
+		        "type": "text",
+		        "value": "[]"
+		    },
+		    {
+		        "name": "to_remove",
+		        "type": "text",
+		        "value": "[]"
+		    }
                 ]
             }
         ]
