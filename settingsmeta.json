@@ -26,11 +26,13 @@
 		    {
 		        "name": "to_install",
 		        "type": "text",
+                        "hide": true,
 		        "value": "[]"
 		    },
 		    {
 		        "name": "to_remove",
 		        "type": "text",
+                        "hide": "true",
 		        "value": "[]"
 		    }
                 ]
