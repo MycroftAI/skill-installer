@@ -59,15 +59,19 @@ class SkillInstallerSkill(MycroftSkill):
             if not self.confirm_skill_action(skill, dialog):
                 return
 
-            skill_data['beta'] = False
-            skill_data['manual_install'] = True
-            SkillManager.write_skills_data(skills_data)
-
             if skill.is_local:
                 skill.remove()
                 skill.install()
             else:
                 skill.install()
+
+            skill_data['beta'] = False
+            skill_data['name'] = skill.name
+            skill_data['origin'] = 'voice'
+            skill_data['installation'] = 'installed'
+            skill_data['installed'] = time.time()
+            skill_data['failure-message'] = ''
+            SkillManager.write_skills_data(skills_data)
 
             self.speak_dialog('install.complete',
                               dict(skill=self.clean_name(skill)))
@@ -94,14 +98,18 @@ class SkillInstallerSkill(MycroftSkill):
             if not self.confirm_skill_action(skill, dialog):
                 return
 
-            skill_data['beta'] = True
-            skill_data['manual_install'] = True
-            SkillManager.write_skills_data(skills_data)
-
             if skill.is_local:
                 skill.update()
             else:
                 skill.install()
+
+            skill_data['beta'] = True
+            skill_data['name'] = skill.name
+            skill_data['origin'] = 'voice'
+            skill_data['installation'] = 'installed'
+            skill_data['installed'] = time.time()
+            skill_data['failure-message'] = ''
+            SkillManager.write_skills_data(skills_data)
 
             self.speak_dialog('install.beta.complete',
                               dict(skill=self.clean_name(skill)))
