@@ -32,6 +32,7 @@ class SkillInstallerSkill(MycroftSkill):
 
     def initialize(self):
         self.settings.set_changed_callback(self.on_web_settings_change)
+        self.on_web_settings_change()
         self.install_word, self.remove_word = self.translate_list('action')
 
     @intent_file_handler('install.intent')
@@ -188,7 +189,7 @@ class SkillInstallerSkill(MycroftSkill):
         to_install = s.get('to_install', [])
         to_remove = s.get('to_remove', [])
         skills_data = SkillManager.load_skills_data()
-
+        self.log.info('to_install: {}'.format(to_install))
         installed = self.__marketplace_install(to_install)
         for skill in installed:
             skill_data = skills_data.setdefault(skill, {})
@@ -216,45 +217,58 @@ class SkillInstallerSkill(MycroftSkill):
             filtered list
         """
         uuid = DeviceApi().get()['uuid']
-        return [s for s in skills if not s['devices'] or uuid in s['devices']]
+        return [s for s in skills
+                if not s.get('devices') or uuid in s.get('devices')]
 
     def __marketplace_install(self, install_list):
-        if isinstance(install_list, str):
-            install_list = json.loads(install_list)
-        install_list = self.__filter_by_uuid(install_list)
-        # Split skill name from author
-        skills = [s['name'].split('.')[0] for s in install_list]
+        try:
+            if isinstance(install_list, str):
+                install_list = json.loads(install_list)
+            install_list = self.__filter_by_uuid(install_list)
+            # Split skill name from author
+            skills = [s['name'].split('.')[0] for s in install_list]
 
-        # Remove already installed skills from skills to install
-        installed_skills = [s.name for s in self.msm.list() if s.is_local]
-        skills = [s for s in skills if s not in installed_skills]
+            msm_skills = self.msm.list()
+            # Remove skills not known to msm
+            skills = [s for s in skills if s in [s.name for s in msm_skills]]
+            # Remove already installed skills from skills to install
+            installed_skills = [s.name for s in msm_skills if s.is_local]
+            skills = [s for s in skills if s not in installed_skills]
 
-        self.log.info('Will install {} from the marketplace'.format(skills))
+            self.log.info('Will install {} from the marketplace'.format(skills))
 
-        def install(skill):
-            self.msm.install(skill)
+            def install(skill):
+                self.msm.install(skill)
 
-        result = self.msm.apply(install, skills)
-        return skills
+            result = self.msm.apply(install, skills)
+            return skills
+        except Exception as e:
+            self.log.error('An error occured installing from marketplace '
+                           '({}'.format(repr(e)))
+            return []
 
     def __marketplace_remove(self, remove_list):
-        # Work around backend sending this as json string
-        if isinstance(remove_list, str):
-            remove_list = json.loads(remove_list)
+        try:
+            # Work around backend sending this as json string
+            if isinstance(remove_list, str):
+                remove_list = json.loads(remove_list)
 
-        remove_list = self.__filter_by_uuid(remove_list)
+            remove_list = self.__filter_by_uuid(remove_list)
 
-        # Split skill name from author
-        skills = [skill['name'].split('.')[0] for skill in remove_list]
-        self.log.info('Will remove {} from the marketplace'.format(skills))
-        # Remove not installed skills from skills to remove
-        installed_skills = [s.name for s in self.msm.list() if s.is_local]
-        skills = [s for s in skills if s in installed_skills]
+            # Split skill name from author
+            skills = [skill['name'].split('.')[0] for skill in remove_list]
+            self.log.info('Will remove {} from the marketplace'.format(skills))
+            # Remove not installed skills from skills to remove
+            installed_skills = [s.name for s in self.msm.list() if s.is_local]
+            skills = [s for s in skills if s in installed_skills]
 
-        self.log.info('Will remove {} from the marketplace'.format(skills))
-        result = self.msm.apply(self.msm.remove, skills)
-        return skills
-
+            self.log.info('Will remove {} from the marketplace'.format(skills))
+            result = self.msm.apply(self.msm.remove, skills)
+            return skills
+        except Exception as e:
+            self.log.error('An error occured installing from marketplace '
+                           '({}'.format(repr(e)))
+            return []
 
     def clean_author(self, skill):
         # TODO: Retrieve and use author from skill-data.json
