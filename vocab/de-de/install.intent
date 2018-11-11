@@ -1,1 +1,4 @@
-installiere {skill}
+installiere {skill}.
+installiere {skill} (Version|) (stabil|offiziell).
+installire (die|) (offizielle | stable) (Version|von|) {skill}.
+offizielle Version (Version|) von {skill} installieren.

@@ -1,0 +1,3 @@
+install {skill} (version|) beta.
+installera {skill} (beta|förandsversion) (version|)
+installera (beta|förhandsversionen) (av|) {skill}.
