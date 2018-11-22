@@ -22,7 +22,7 @@ from msm import SkillNotFound, SkillRequirementsException, \
     MultipleSkillMatches, MycroftSkillsManager
 from mycroft import intent_file_handler, MycroftSkill
 from mycroft.skills.skill_manager import SkillManager
-from mycroft.api import DeviceApi
+from mycroft.api import DeviceApi, is_paired
 
 class SkillInstallerSkill(MycroftSkill):
     def __init__(self):
@@ -32,7 +32,12 @@ class SkillInstallerSkill(MycroftSkill):
 
     def initialize(self):
         self.settings.set_changed_callback(self.on_web_settings_change)
-        self.on_web_settings_change()
+        try:
+            if is_paired():
+                self.on_web_settings_change()
+        except Exception as e:
+            self.log.warning('Couldn\'t run market place installer'
+                             '({})'.format(repr(e)))
         self.install_word, self.remove_word = self.translate_list('action')
 
     @intent_file_handler('install.intent')
