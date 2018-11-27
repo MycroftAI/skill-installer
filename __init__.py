@@ -32,13 +32,6 @@ class SkillInstallerSkill(MycroftSkill):
 
     def initialize(self):
         self.settings.set_changed_callback(self.on_web_settings_change)
-        try:
-            if is_paired():
-                self.on_web_settings_change()
-        except Exception as e:
-            self.log.warning('Couldn\'t run market place installer'
-                             '({})'.format(repr(e)))
-
         self.install_word, self.remove_word = self.translate_list('action')
 
     @intent_file_handler('install.intent')
