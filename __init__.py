@@ -32,12 +32,6 @@ class SkillInstallerSkill(MycroftSkill):
 
     def initialize(self):
         self.settings.set_changed_callback(self.on_web_settings_change)
-        try:
-            if is_paired():
-                self.on_web_settings_change()
-        except Exception as e:
-            self.log.warning('Couldn\'t run market place installer'
-                             '({})'.format(repr(e)))
         self.install_word, self.remove_word = self.translate_list('action')
 
     @intent_file_handler('install.intent')
@@ -200,10 +194,26 @@ class SkillInstallerSkill(MycroftSkill):
                 self.msm.install(link)
 
         to_install = s.get('to_install', [])
+        if isinstance(to_install, str):
+            to_install = json.loads(to_install)
         to_remove = s.get('to_remove', [])
+        if isinstance(to_remove, str):
+            to_remove = json.loads(to_remove)
+        self.handle_marketplace(to_install, to_remove)
+
+    def handle_marketplace(self, to_install, to_remove):
         skills_data = SkillManager.load_skills_data()
+
+        # Remove skills in to_remove from the to_install list
+        # This avoids unnecessary install / uninstall cycles
+        self.log.info('to_install: {}'.format(to_install))
+        removed = [e['name'] for e in to_remove]
+        self.log.info(removed)
+        to_install = [e for e in to_install
+                      if e['name'] not in removed]
         self.log.info('to_install: {}'.format(to_install))
         installed, failed = self.__marketplace_install(to_install)
+
         for skill in installed:
             skill_data = skills_data.setdefault(skill, {})
             skill_data['origin'] = 'marketplace'
@@ -244,8 +254,6 @@ class SkillInstallerSkill(MycroftSkill):
 
     def __marketplace_install(self, install_list):
         try:
-            if isinstance(install_list, str):
-                install_list = json.loads(install_list)
             install_list = self.__filter_by_uuid(install_list)
             # Split skill name from author
             skills = [s['name'].split('.')[0] for s in install_list]
@@ -281,10 +289,6 @@ class SkillInstallerSkill(MycroftSkill):
 
     def __marketplace_remove(self, remove_list):
         try:
-            # Work around backend sending this as json string
-            if isinstance(remove_list, str):
-                remove_list = json.loads(remove_list)
-
             remove_list = self.__filter_by_uuid(remove_list)
 
             # Split skill name from author
