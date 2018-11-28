@@ -131,6 +131,22 @@ class SkillInstallerSkill(MycroftSkill):
             self.speak_dialog('remove.complete',
                               dict(skill=self.clean_name(skill)))
 
+    @intent_file_handler('is.installed.intent')
+    def is_installed(self, message):
+        # Failsafe if padatious matches without skill entity.
+        if not message.data.get('skill'):
+            return self.handle_list_skills(message)
+
+        with self.handle_msm_errors(message.data['skill'], self.remove_word):
+            skill = self.find_skill(message.data['skill'], False)
+
+            if skill.is_local:
+                dialog = 'installed'
+            else:
+                dialog = 'not.installed'
+
+            self.speak_dialog(dialog, dict(skill=self.clean_name(skill)))
+
     @intent_file_handler('list.skills.intent')
     def handle_list_skills(self, message):
         skills = [skill for skill in self.msm.list() if not skill.is_local]
