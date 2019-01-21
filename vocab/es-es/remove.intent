@@ -1,0 +1,4 @@
+desinstala (la habilidad|) {skill}
+elimina la habilidad {skill}
+desinstala (la| )?(habilidad|) {skill}
+borra (la| )?habilidad {skill}
