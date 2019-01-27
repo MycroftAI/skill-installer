@@ -1,1 +1,4 @@
-(installare|installa) {skill}
+installa {skill}.
+installa {skill} (versione|) (stabile|ufficiale).
+installa (la|) (versione|) (ufficiale|stabile) (di|) {skill}.
+installa la versione (ufficiale|rilasciata) di {skill}.

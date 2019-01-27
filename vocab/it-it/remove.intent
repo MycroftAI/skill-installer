@@ -1,0 +1,4 @@
+rimuovi (skill|abilità) {skill}
+rimuovi abilità {skill}
+disinstalla (abilità|) {skill}
+rimuovi (skill|) {skill}
