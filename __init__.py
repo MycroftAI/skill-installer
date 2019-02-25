@@ -317,7 +317,6 @@ class SkillInstallerSkill(MycroftSkill):
         return self.clean_repo_name(skill.name)
 
     def confirm_skill_action(self, skill, confirm_dialog):
-        return True
         resp = self.ask_yesno(confirm_dialog,
                               data={'skill': self.clean_name(skill),
                                     'author': self.clean_author(skill)})
