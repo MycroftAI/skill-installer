@@ -67,7 +67,7 @@ class SkillInstallerSkill(MycroftSkill):
                 return
 
             if skill.is_local:
-                msm.remove(skill)
+                self.msm.remove(skill)
                 self.msm.install(skill, origin='voice')
             else:
                 self.msm.install(skill, origin='voice')
