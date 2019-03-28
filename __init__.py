@@ -111,7 +111,7 @@ class SkillInstallerSkill(MycroftSkill):
             try:
                 DeviceApi().upload_skills_data(self.msm.skills_data)
             except Exception:
-                LOG.exception('Could not upload skill manifest')
+                self.log.exception('Could not upload skill manifest')
 
 
     @intent_file_handler('remove.intent')
