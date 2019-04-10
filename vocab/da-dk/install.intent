@@ -1,0 +1,4 @@
+Installer {skill}
+installer {skill} (version|) (stable||official)
+installer (official|stble) (version|af) {skill}
+installer den officielle release (version|) af {skill}
