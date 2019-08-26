@@ -11,18 +11,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 from contextlib import contextmanager
 from random import shuffle
-import time
-import json
 
-from msm import SkillNotFound, SkillRequirementsException, \
-    PipRequirementsException, SystemRequirementsException, CloneException, \
-    GitException, AlreadyRemoved, AlreadyInstalled, MsmException, SkillEntry, \
-    MultipleSkillMatches, MycroftSkillsManager
+from msm import (
+    AlreadyInstalled,
+    AlreadyRemoved,
+    CloneException,
+    GitException,
+    MsmException,
+    MultipleSkillMatches,
+    PipRequirementsException,
+    SkillEntry,
+    SkillNotFound,
+    SkillRequirementsException,
+    SystemRequirementsException
+)
+
 from mycroft import intent_file_handler, MycroftSkill
-from mycroft.skills.skill_manager import SkillManager
 from mycroft.api import DeviceApi, is_paired
+from mycroft.skills.msm_wrapper import build_msm_config, create_msm
 
 
 def is_beta(skill_name, skill_list):
@@ -34,10 +43,19 @@ def is_beta(skill_name, skill_list):
 
 
 class SkillInstallerSkill(MycroftSkill):
+    _msm = None
+
     def __init__(self):
         super().__init__()
-        self.msm = SkillManager.create_msm()
         self.install_word = self.remove_word = None
+
+    @property
+    def msm(self):
+        if self._msm is None:
+            msm_config = build_msm_config(self.config_core)
+            self._msm = create_msm(msm_config)
+
+        return self._msm
 
     def initialize(self):
         self.settings.set_changed_callback(self.on_web_settings_change)
@@ -52,8 +70,10 @@ class SkillInstallerSkill(MycroftSkill):
 
         with self.handle_msm_errors(message.data['skill'], self.remove_word):
             skill = self.find_skill(message.data['skill'], False)
-            was_beta = is_beta(skill.name, 
-                               self.msm.load_skills_data()['skills'])
+            was_beta = is_beta(
+                skill.name,
+                self.msm.device_skill_state['skills']
+            )
 
             if not was_beta and skill.is_local:
                 raise AlreadyInstalled(skill.name)
@@ -81,9 +101,10 @@ class SkillInstallerSkill(MycroftSkill):
         with self.handle_msm_errors(message.data['skill'], self.remove_word):
             skill = self.find_skill(message.data['skill'], False)
             skill.sha = None
-            was_beta = is_beta(skill.name, 
-                               self.msm.load_skills_data()['skills'])
-
+            was_beta = is_beta(
+                skill.name,
+                self.msm.device_skill_state['skills']
+            )
             if was_beta and skill.is_local:
                 self.speak_dialog('error.already.beta',
                                   dict(skill=self.clean_name(skill)))
@@ -107,17 +128,17 @@ class SkillInstallerSkill(MycroftSkill):
             self.update_skills_json()
 
     def update_skills_json(self):
-        if SkillManager.manifest_upload_allowed and is_paired():
+        skills_config = self.config_core['skills']
+        upload_allowed = skills_config.get('upload_skill_manifest', False)
+        if upload_allowed and is_paired():
             try:
-                DeviceApi().upload_skills_data(self.msm.skills_data)
+                DeviceApi().upload_skills_data(self.msm.device_skill_state)
             except Exception:
                 self.log.exception('Could not upload skill manifest')
-
 
     @intent_file_handler('remove.intent')
     def remove(self, message):
         with self.handle_msm_errors(message.data['skill'], self.remove_word):
-            self.msm.load_skills_data()
             skill = self.find_skill(message.data['skill'], True)
             if not skill.is_local:
                 raise AlreadyRemoved(skill.name)
@@ -148,10 +169,10 @@ class SkillInstallerSkill(MycroftSkill):
 
     @intent_file_handler('list.skills.intent')
     def handle_list_skills(self, message):
-        skills = [skill for skill in self.msm.list() if not skill.is_local]
+        skills = [skill for skill in self.msm.all_skills if not skill.is_local]
         shuffle(skills)
         skills = '. '.join(self.clean_name(skill) for skill in skills[:4])
-        skills = skills.replace('skill', '').replace('-',' ')
+        skills = skills.replace('skill', '').replace('-', ' ')
         self.speak_dialog('some.available.skills', dict(skills=skills))
 
     @intent_file_handler('install.custom.intent')
@@ -217,8 +238,6 @@ class SkillInstallerSkill(MycroftSkill):
         self.handle_marketplace(to_install, to_remove)
 
     def handle_marketplace(self, to_install, to_remove):
-        self.msm.load_skills_data()
-
         # Remove skills in to_remove from the to_install list
         # This avoids unnecessary install / uninstall cycles
         self.log.info('to_install: {}'.format(to_install))
@@ -253,7 +272,7 @@ class SkillInstallerSkill(MycroftSkill):
             # Split skill name from author
             skills = [s['name'].split('.')[0] for s in install_list]
 
-            msm_skills = self.msm.list()
+            msm_skills = self.msm.all_skills
             # Remove skills not known to msm
             skills = [s for s in skills if s in [s.name for s in msm_skills]]
             # Remove already installed skills from skills to install
@@ -290,7 +309,7 @@ class SkillInstallerSkill(MycroftSkill):
             skills = [skill['name'].split('.')[0] for skill in remove_list]
             self.log.info('Will remove {} from the marketplace'.format(skills))
             # Remove not installed skills from skills to remove
-            installed_skills = [s.name for s in self.msm.list() if s.is_local]
+            installed_skills = [s.name for s in self.msm.all_skills if s.is_local]
             skills = [s for s in skills if s in installed_skills]
 
             self.log.info('Will remove {} from the marketplace'.format(skills))
