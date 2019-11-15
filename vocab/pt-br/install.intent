@@ -1,0 +1,4 @@
+instalar {skill}.
+instalar (a|) (versão|) (estável|oficial) (de|do|) {skill} .
+instalar (a|) (versão|) (oficial|estável) de {skill}.
+(instalar|instale) (a|o) (versão de|) lançamento oficial de {skill}.
