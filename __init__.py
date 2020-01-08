@@ -68,7 +68,7 @@ class SkillInstallerSkill(MycroftSkill):
         if not message.data.get('skill'):
             return self.handle_list_skills(message)
 
-        with self.handle_msm_errors(message.data['skill'], self.remove_word):
+        with self.handle_msm_errors(message.data['skill'], self.install_word):
             skill = self.find_skill(message.data['skill'], False)
             was_beta = is_beta(
                 skill.name,
