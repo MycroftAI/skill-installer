@@ -202,7 +202,7 @@ class SkillInstallerSkill(MycroftSkill):
                 SkillRequirementsException: 'error.skill.requirements',
                 PipRequirementsException: 'error.pip.requirements',
                 SystemRequirementsException: 'error.system.requirements',
-                CloneException: 'error.filesystem',
+                CloneException: 'error.clone.git',
                 GitException: 'error.filesystem',
                 AlreadyRemoved: 'error.already.removed',
                 AlreadyInstalled: 'error.already.installed',
