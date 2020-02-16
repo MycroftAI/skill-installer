@@ -58,7 +58,7 @@ class SkillInstallerSkill(MycroftSkill):
         return self._msm
 
     def initialize(self):
-        self.settings.set_changed_callback(self.on_web_settings_change)
+        self.settings_change_callback = self.on_web_settings_change
         self.install_word, self.remove_word = self.translate_list('action')
 
     @intent_file_handler('install.intent')
