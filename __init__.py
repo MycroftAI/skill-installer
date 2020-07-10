@@ -214,25 +214,11 @@ class SkillInstallerSkill(MycroftSkill):
             self.speak_dialog('cancelled')
 
     def on_web_settings_change(self):
-        s = self.settings
-        link = s.get('installer_link')
-        prev_link = s.get('previous_link')
-        auto_install = s.get('auto_install')
 
-        # Check if we should auto-install a skill due to web setting change
-        if link and prev_link != link and auto_install:
-            s['previous_link'] = link
-
-            self.log.info('Installing from the web...')
-            action = self.translate_list('action')[0]
-            name = SkillEntry.extract_repo_name(link)
-            with self.handle_msm_errors(name, action):
-                self.msm.install(link)
-
-        to_install = s.get('to_install', [])
+        to_install = self.settings.get('to_install', [])
         if isinstance(to_install, str):
             to_install = json.loads(to_install)
-        to_remove = s.get('to_remove', [])
+        to_remove = self.settings.get('to_remove', [])
         if isinstance(to_remove, str):
             to_remove = json.loads(to_remove)
         self.handle_marketplace(to_install, to_remove)

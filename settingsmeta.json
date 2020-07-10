@@ -15,12 +15,6 @@
                         "placeholder": "https://github.com/example/...",
                         "value": ""
                     },
-                    {
-                        "name": "auto_install",
-                        "type": "checkbox",
-                        "label": "Automatic Install",
-                        "value": "false"
-                    },
 		    {
 		        "name": "to_install",
 		        "type": "text",
