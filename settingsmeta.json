@@ -6,7 +6,7 @@
                 "fields": [
                     {
                         "type": "label",
-                        "label": "<p>Registered <a href='https://github.com/MycroftAI/mycroft-skills'>skills</a> can easily be installed  with voice commands like \"install coin flip\".  Here you can enter a URL for a private skill or skill in development.<p/><p>Provide the URL to the Skill repository below.  When Automatic Install is checked, the installation will occur within a minute on all your devices. When not checked, you can intiate the installation by saying \"Download custom skill\".</p>"
+                        "label": "<p>Skills registered in the <a href='https://market.mycroft.ai/skills'>Marketplace</a> can be installed with voice commands like \"install speedtest\".  Here you can enter a URL for a private Skill or Skill in development.<p/><p>Provide the URL to the Skill repository below.  You can intiate the installation by saying \"Hey Mycroft, download custom skill\".</p>"
                     },
                     {
                         "name": "installer_link",
@@ -14,12 +14,6 @@
                         "label": "Skill URL",
                         "placeholder": "https://github.com/example/...",
                         "value": ""
-                    },
-                    {
-                        "name": "auto_install",
-                        "type": "checkbox",
-                        "label": "Automatic Install",
-                        "value": "false"
                     },
 		    {
 		        "name": "to_install",
