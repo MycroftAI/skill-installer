@@ -15,18 +15,18 @@
                         "placeholder": "https://github.com/example/...",
                         "value": ""
                     },
-		    {
-		        "name": "to_install",
-		        "type": "text",
+                    {
+                        "name": "to_install",
+                        "type": "disabled-text-field",
                         "hide": "true",
-		        "value": "[]"
-		    },
-		    {
-		        "name": "to_remove",
-		        "type": "text",
+                        "value": "[]"
+                    },
+                    {
+                        "name": "to_remove",
+                        "type": "disabled-text-field",
                         "hide": "true",
-		        "value": "[]"
-		    }
+                        "value": "[]"
+                    }
                 ]
             }
         ]

@@ -223,6 +223,9 @@ class SkillInstallerSkill(MycroftSkill):
         """Callback on changed settings.
 
         Handles updating skill installation from Marketplace.
+        
+        NOTE: Not yet implemented on new Selene backend. 
+        These settings have been disabled until the functionality is restored.
         """
         to_install = self.settings.get('to_install', [])
         to_remove = self.settings.get('to_remove', [])
