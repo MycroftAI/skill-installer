@@ -125,9 +125,15 @@ class SkillInstallerSkill(MycroftSkill):
 
             self.speak_dialog('install.beta.complete',
                               dict(skill=self.clean_name(skill)))
+            # Upload manifest to inform backend and Marketplaced of changes
             self.update_skills_json()
 
     def update_skills_json(self):
+        """Update skills manifest if allowed.
+
+        If skill config allows uploading skills manifest and the device is
+        properly connected upload the manifest.
+        """
         skills_config = self.config_core['skills']
         upload_allowed = skills_config.get('upload_skill_manifest', False)
         if upload_allowed and is_paired():
@@ -214,21 +220,41 @@ class SkillInstallerSkill(MycroftSkill):
             self.speak_dialog('cancelled')
 
     def on_web_settings_change(self):
+        """Callback on changed settings.
 
+        Handles updating skill installation from Marketplace.
+        """
         to_install = self.settings.get('to_install', [])
+        to_remove = self.settings.get('to_remove', [])
+        # If json string convert to proper dict
         if isinstance(to_install, str):
             to_install = json.loads(to_install)
-        to_remove = self.settings.get('to_remove', [])
         if isinstance(to_remove, str):
             to_remove = json.loads(to_remove)
+
         self.handle_marketplace(to_install, to_remove)
 
     def handle_marketplace(self, to_install, to_remove):
+        """Install and remove skills.
+
+        Takes lists of skills to install and remove. Each entry in the list
+        is a dict containing
+
+        {
+          'name': 'Skill-name',
+          'devices': ['uuid1', 'uuid2', ..., "uuidN"]
+        }
+        The Skill-name skill will be installed if current device matches
+        a device in the 'devices' list.
+
+        Arguments:
+            to_install (list): Skills entries to install
+            to_remove (list): Skill entries to remove
+        """
         # Remove skills in to_remove from the to_install list
         # This avoids unnecessary install / uninstall cycles
         self.log.info('to_install: {}'.format(to_install))
         removed = [e['name'] for e in to_remove]
-        self.log.info(removed)
         to_install = [e for e in to_install
                       if e['name'] not in removed]
         self.log.info('to_install: {}'.format(to_install))
@@ -236,8 +262,18 @@ class SkillInstallerSkill(MycroftSkill):
         removed = self.__marketplace_remove(to_remove)
         self.update_skills_json()
 
+        if installed:
+            self.log.debug('Successfully installed '
+                           '{} skills'.format(len(installed)))
+        if failed:
+            self.log.debug('Failed to install '
+                           '{} skills'.format(len(failed)))
+        if removed:
+            self.log.debug('Successfully removed '
+                           '{} skills'.format(len(removed)))
+
     def __filter_by_uuid(self, skills):
-        """ Return only skills intended for this device.
+        """Return only skills intended for this device.
 
         Keeps entrys where the devices field is None of contains the uuid
         of the current device.
@@ -253,6 +289,13 @@ class SkillInstallerSkill(MycroftSkill):
                 if not s.get('devices') or uuid in s.get('devices')]
 
     def __marketplace_install(self, install_list):
+        """Install skills as instructed by the marketplace.
+
+        Installs any skills from the install list intended for this device.
+
+        Arguments:
+            install_list (list): Skill entries to evaluate for install
+        """
         try:
             install_list = self.__filter_by_uuid(install_list)
             # Split skill name from author
@@ -270,6 +313,7 @@ class SkillInstallerSkill(MycroftSkill):
             successes = []
             fails = []
             def install(name):
+                """Msm install hook, recording successes and fails."""
                 s = self.msm.find_skill(name)
                 try:
                     self.msm.install(s, origin='marketplace')
@@ -288,6 +332,13 @@ class SkillInstallerSkill(MycroftSkill):
             return [], []
 
     def __marketplace_remove(self, remove_list):
+        """Remove skills as instructed by the Marketplace.
+
+        Removes any skills from the remove list intended for this device.
+
+        Arguments:
+            remove_list (list): Skill entries to evaluate for removal
+        """
         try:
             remove_list = self.__filter_by_uuid(remove_list)
 
