@@ -29,7 +29,7 @@ from msm import (
     SystemRequirementsException
 )
 
-from mycroft import intent_file_handler, MycroftSkill
+from mycroft import MycroftSkill, intent_handler
 from mycroft.api import DeviceApi, is_paired
 from mycroft.skills.msm_wrapper import build_msm_config, create_msm
 
@@ -61,7 +61,7 @@ class SkillInstallerSkill(MycroftSkill):
         self.settings_change_callback = self.on_web_settings_change
         self.install_word, self.remove_word = self.translate_list('action')
 
-    @intent_file_handler('install.intent')
+    @intent_handler('install.intent')
     def install(self, message):
         # Failsafe if padatious matches without skill entity.
 
@@ -96,7 +96,7 @@ class SkillInstallerSkill(MycroftSkill):
                               dict(skill=self.clean_name(skill)))
             self.update_skills_json()
 
-    @intent_file_handler('install.beta.intent')
+    @intent_handler('install.beta.intent')
     def install_beta(self, message):
         with self.handle_msm_errors(message.data['skill'], self.remove_word):
             skill = self.find_skill(message.data['skill'], False)
@@ -142,7 +142,7 @@ class SkillInstallerSkill(MycroftSkill):
             except Exception:
                 self.log.exception('Could not upload skill manifest')
 
-    @intent_file_handler('remove.intent')
+    @intent_handler('remove.intent')
     def remove(self, message):
         with self.handle_msm_errors(message.data['skill'], self.remove_word):
             skill = self.find_skill(message.data['skill'], True)
@@ -157,7 +157,7 @@ class SkillInstallerSkill(MycroftSkill):
                               dict(skill=self.clean_name(skill)))
             self.update_skills_json()
 
-    @intent_file_handler('is.installed.intent')
+    @intent_handler('is.installed.intent')
     def is_installed(self, message):
         # Failsafe if padatious matches without skill entity.
         if not message.data.get('skill'):
@@ -173,7 +173,7 @@ class SkillInstallerSkill(MycroftSkill):
 
             self.speak_dialog(dialog, dict(skill=self.clean_name(skill)))
 
-    @intent_file_handler('list.skills.intent')
+    @intent_handler('list.skills.intent')
     def handle_list_skills(self, message):
         skills = [skill for skill in self.msm.all_skills if not skill.is_local]
         shuffle(skills)
@@ -181,7 +181,7 @@ class SkillInstallerSkill(MycroftSkill):
         skills = skills.replace('skill', '').replace('-', ' ')
         self.speak_dialog('some.available.skills', dict(skills=skills))
 
-    @intent_file_handler('install.custom.intent')
+    @intent_handler('install.custom.intent')
     def install_custom(self, message):
         link = self.settings.get('installer_link')
         if link:
