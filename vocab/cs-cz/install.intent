@@ -1,0 +1,5 @@
+Přidej {skill}.
+Nainstaluj {skill}.
+(Nainstaluj|Přidej) {skill} (verzi|) (stabilní|oficiální).
+(Nainstaluj|Přidej) (stabilní|oficiální) (verzi|) {skill}.
+(Nainstaluj|Přidej) oficiální (verzi|) {skill}.
